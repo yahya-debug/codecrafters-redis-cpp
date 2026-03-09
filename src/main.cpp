@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <string>
+#include <thread>
 #include <cstring>
 #include <unistd.h>
 #include <sys/types.h>
@@ -58,11 +59,14 @@ int main(int argc, char **argv) {
 
   // Uncomment the code below to pass the first stage
   // 
-  int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
-  cout << "Client connected\n";
-
-  handle_connectoin(client_fd);
-  close(server_fd);
+	while (true) {
+		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
+		cout << "Client connected\n";
+		if (client_fd < 0) continue;
+		thread t(handle_connectoin, client_fd);
+		t.detach();
+	}
+	close(server_fd);
 
   return 0;
 }
