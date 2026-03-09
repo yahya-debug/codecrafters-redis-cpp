@@ -1,4 +1,4 @@
-#include "HandleConnection.hpp"
+// #include "HandleConnection.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -11,6 +11,8 @@
 #include <bits/stdc++.h>
 using namespace std;
 typedef long long L;
+
+void handle_connectoin(int client_fd);
 
 int main(int argc, char **argv) {
   // Flush after every cout / cerr
