@@ -51,9 +51,7 @@ void handle_connectoin(int client_fd) {
     }
     // else: send the response
 		string raw_input(buf.begin(), buf.begin()+bytes_rcv);
-		cout << raw_input;
 		vector<string> command = RESP_Parser::parse_array(raw_input);
-		// // cout << command[0] << '\n';
 		if (command.empty()) continue;
 
 
