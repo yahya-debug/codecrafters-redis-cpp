@@ -17,8 +17,11 @@ typedef long long L;
 
 int Reply(vector<string> input, int client_fd) {
 	string res;
-	if (input[0] == "PING") res = "+PONG\r\n";
-	else if (input[0] == "ECHO") {
+	if (input[0] == "PING") {
+		res = "PONG";
+		string resp = RESP_Parser::make_simple_string(res);
+		return send(client_fd, resp.c_str(), resp.size(), 0);
+	} else if (input[0] == "ECHO") {
 		res = ""; 
 		cout << input.size() << '\n';
 		for (int i = 1; i < input.size(); i++)
