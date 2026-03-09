@@ -20,6 +20,7 @@ int Reply(vector<string> input, int client_fd) {
 	if (input[0] == "PING") res = "+PONG\r\n";
 	else if (input[0] == "ECHO") {
 		res = ""; 
+		cout << input.size() << '\n';
 		for (int i = 1; i < input.size(); i++)
 			res += input[i] + (i == input.size()-1 ? "":" ");
 	}

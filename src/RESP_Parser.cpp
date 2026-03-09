@@ -38,7 +38,7 @@ class RESP_Parser {
       args.pb(inp.substr(pos, str_len));
 
       // jump with the pos pointer ater \r\n (2 buffered inputs after the data)
-      pos = str_len+2;
+      pos += str_len+2;
     }
     return args;
   }
