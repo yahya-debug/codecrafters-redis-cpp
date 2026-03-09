@@ -24,6 +24,10 @@ void handle_connectoin(int client_fd) {
       cerr << "Error\n";
       continue;
     }
+    if (bytes_rcv == 0) {
+      cout << "Client disconnected on socket " << client_fd << endl;
+      break; // This is the crucial part!
+    }
     
     if (send(client_fd, res.c_str(), res.size(), 0) < 0) {
       cerr << "Error\n";
