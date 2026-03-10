@@ -9,28 +9,51 @@
 #include <netdb.h>
 #include <bits/stdc++.h>
 #include "RESP_Parser.cpp"
+#include "StringCodes.cpp"
 #define all(a) a.begin(), a.end()
 using namespace std;
 typedef long long L;
 
 
+unordered_map<string, string> store;
 
 int Reply(vector<string> input, int client_fd) {
 	string res;
-	if (input[0] == "PING") {
-		res = "PONG";
-		string resp = RESP_Parser::make_simple_string(res);
-		return send(client_fd, resp.c_str(), resp.size(), 0);
-	} else if (input[0] == "ECHO") {
-		res = ""; 
-		cout << input.size() << '\n';
-		for (int i = 1; i < input.size(); i++)
-			res += input[i] + (i == input.size()-1 ? "":" ");
+	bool simple = false; // Determine if it is a simple string response
+
+	switch (StringCoding::command_string(input[0])) {
+		case StringCoding::PING:
+			res = "PONG";
+			simple = true;
+			break;
+		case StringCoding::ECHO:
+			res = "";
+			for (int i = 1; i < input.size(); i++)
+				res += input[i] + (i == input.size()-1 ? "":" ");
+			simple = false;
+			break;
+		case StringCoding::SET:
+			if (input.size() < 3) cerr << "ERR wrong number of arguments for 'set' command\n";
+			else if (input.size() == 3) {
+				store[input[1]] = input[2];
+				res = "OK";
+				simple = true;
+			} else cerr << "ERR syntax error\n";
+			break;
+		case StringCoding::GET:
+			if (input.size() < 2) cerr << "ERR wrong number of arguments for 'set' command\n";
+			else if (input.size() == 2) {
+				res = store[input[1]];
+				simple = false;
+			} else cerr << "ERR syntax error\n";
+			break;
 	}
-	// cout << RESP_Parser::make_bulk_string(res) << endl;
-	string resp = RESP_Parser::make_bulk_string(res);
-  int status = send(client_fd, resp.c_str(), resp.size(), 0);
-	return status;
+
+	string resp;
+	if (simple)
+		resp = RESP_Parser::make_simple_string(res);
+	else resp = RESP_Parser::make_bulk_string(res);
+	return send(client_fd, resp.c_str(), resp.size(), 0);
 }
 
 
