@@ -29,3 +29,4 @@ class StringCoding {
     return unknown;
   }
 };
+

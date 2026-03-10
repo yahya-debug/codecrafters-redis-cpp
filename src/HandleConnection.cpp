@@ -10,12 +10,13 @@
 #include <bits/stdc++.h>
 #include "RESP_Parser.cpp"
 #include "StringCodes.cpp"
+#include "DB.cpp"
 #define all(a) a.begin(), a.end()
 using namespace std;
 typedef long long L;
 
+unordered_map<string, Entry> Store::store;
 
-unordered_map<string, string> store;
 
 int Reply(vector<string> input, int client_fd) {
 	string res;
@@ -35,20 +36,34 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::SET:
 			if (input.size() < 3) cerr << "ERR wrong number of arguments for 'set' command\n";
 			else if (input.size() == 3) {
-				store[input[1]] = input[2];
+				Store::store[input[1]] = {input[2], 0};
 				res = "OK";
 				simple = true;
+			} else if (input.size() == 5) {
+				L ttl;
+				switch (ExpCode::Exp_Ext(input[3])) {
+					case ExpCode::SECONDS:
+						ttl = stoll(input[4])*1000;
+						break;
+					case ExpCode::MSECOND:
+						ttl = stoll(input[4]);
+				}
+				res = "OK";
+				Store::store[input[1]] = {input[2], Store::get_time()+ttl};
 			} else cerr << "ERR syntax error\n";
 			break;
 		case StringCoding::GET:
 			if (input.size() < 2) cerr << "ERR wrong number of arguments for 'set' command\n";
 			else if (input.size() == 2) {
-				res = store[input[1]];
 				simple = false;
+				if (Store::store.find(input[1]) != Store::store.end()) {
+					if (Store::store[input[1]].exp && Store::get_time() > Store::store[input[1]].exp)
+						Store::store.erase(input[1]), res = "-1";
+					else res = Store::store[input[1]].val;
+				} else res = "-1";
 			} else cerr << "ERR syntax error\n";
 			break;
 	}
-
 	string resp;
 	if (simple)
 		resp = RESP_Parser::make_simple_string(res);
