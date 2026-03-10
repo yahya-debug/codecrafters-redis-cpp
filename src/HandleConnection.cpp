@@ -21,7 +21,8 @@ unordered_map<string, Entry> Store::store;
 int Reply(vector<string> input, int client_fd) {
 	string res;
 	bool simple = false; // Determine if it is a simple string response
-
+	bool null = false;
+	
 	switch (StringCoding::command_string(input[0])) {
 		case StringCoding::PING:
 			res = "PONG";
@@ -58,14 +59,16 @@ int Reply(vector<string> input, int client_fd) {
 				simple = false;
 				if (Store::store.find(input[1]) != Store::store.end()) {
 					if (Store::store[input[1]].exp && Store::get_time() > Store::store[input[1]].exp)
-						Store::store.erase(input[1]), res = "-1";
+						Store::store.erase(input[1]), res = "-1", null = true;
 					else res = Store::store[input[1]].val;
-				} else res = "-1";
+				} else res = "-1", null = true;
 			} else cerr << "ERR syntax error\n";
 			break;
 	}
 	string resp;
-	if (simple)
+	if (null) {
+		resp = "$-1\r\n";
+	} else if (simple)
 		resp = RESP_Parser::make_simple_string(res);
 	else resp = RESP_Parser::make_bulk_string(res);
 	return send(client_fd, resp.c_str(), resp.size(), 0);
