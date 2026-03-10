@@ -48,7 +48,7 @@ int Reply(vector<string> input, int client_fd) {
 					case ExpCode::MSECOND:
 						ttl = stoll(input[4]);
 				}
-				res = "OK";
+				res = "OK", simple = true;
 				Store::store[input[1]] = {input[2], Store::get_time()+ttl};
 			} else cerr << "ERR syntax error\n";
 			break;
