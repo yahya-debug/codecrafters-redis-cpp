@@ -146,7 +146,7 @@ int Reply(vector<string> input, int client_fd) {
 					if (s < 0) s = vec->size()+s;
 					if (e < 0) e = vec->size()+e;
 					if (s <= e && s < vec->size())
-						for (int i = s; i <= min(e, (int)(vec->size())-1); i++)
+						for (int i = max(0, s); i <= min(e, (int)(vec->size())-1); i++)
 							res_arr.pb(vec->at(i));
 				}
 			}
