@@ -51,4 +51,7 @@ class RESP_Parser {
   static string make_simple_string(const string& str) {
     return "+" + str + "\r\n";
   }
+  static string make_integer(const string& str) {
+    return ":" + str + "\r\n";
+  }
 };

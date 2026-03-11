@@ -19,6 +19,7 @@ class StringCoding {
     ECHO,
     SET,
     GET,
+    RPUSH,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -26,6 +27,7 @@ class StringCoding {
     if (str == "ECHO") return ECHO;
     if (str == "SET") return SET;
     if (str == "GET") return GET;
+    if (str == "RPUSH") return RPUSH;
     return unknown;
   }
 };

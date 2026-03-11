@@ -15,60 +15,129 @@
 using namespace std;
 typedef long long L;
 
-unordered_map<string, Entry> Store::store;
+Store store;
 
 
 int Reply(vector<string> input, int client_fd) {
 	string res;
 	bool simple = false; // Determine if it is a simple string response
 	bool null = false;
+	bool num = false;
 	
 	switch (StringCoding::command_string(input[0])) {
+		// PING command
 		case StringCoding::PING:
 			res = "PONG";
-			simple = true;
+			simple = true, num = null = false;
 			break;
+		// ECHO command
 		case StringCoding::ECHO:
+			if (input.size() == 1) return Store::ERR(ERR::NUM_ARG, "echo");
 			res = "";
 			for (int i = 1; i < input.size(); i++)
 				res += input[i] + (i == input.size()-1 ? "":" ");
-			simple = false;
+			simple = num = false;
 			break;
+
+
+		// SET command
 		case StringCoding::SET:
-			if (input.size() < 3) cerr << "ERR wrong number of arguments for 'set' command\n";
+			// Contains either 3 or 5 arguments only
+			// SET Key Value (EX/PX) (Time To Live)
+			if (input.size() < 3) return Store::ERR(ERR::NUM_ARG, "set");
 			else if (input.size() == 3) {
-				Store::store[input[1]] = {input[2], 0};
+				// by defult we use 0 to detect non-expiring data
+				store.SET(input[1], {input[2], 0});
 				res = "OK";
 				simple = true;
 			} else if (input.size() == 5) {
 				L ttl;
 				switch (ExpCode::Exp_Ext(input[3])) {
 					case ExpCode::SECONDS:
+						// EX: time to live in seconds so *1000 because our timing functoin uses milliseconds
 						ttl = stoll(input[4])*1000;
 						break;
 					case ExpCode::MSECOND:
+						// PX: time to live in milliseconds
 						ttl = stoll(input[4]);
 				}
 				res = "OK", simple = true;
-				Store::store[input[1]] = {input[2], Store::get_time()+ttl};
+				store.SET(input[1], {input[2], Store::get_time()+ttl});
 			} else cerr << "ERR syntax error\n";
 			break;
+		
+
+
+		// GET command
 		case StringCoding::GET:
-			if (input.size() < 2) cerr << "ERR wrong number of arguments for 'set' command\n";
-			else if (input.size() == 2) {
-				simple = false;
-				if (Store::store.find(input[1]) != Store::store.end()) {
-					if (Store::store[input[1]].exp && Store::get_time() > Store::store[input[1]].exp)
-						Store::store.erase(input[1]), res = "-1", null = true;
-					else res = Store::store[input[1]].val;
-				} else res = "-1", null = true;
-			} else cerr << "ERR syntax error\n";
+			// input should contain only 2 arguments the command and the key
+			// GET Key
+			if (input.size() != 2) return Store::ERR(ERR::NUM_ARG, "get");
+			
+			// returns bulk string
+			simple = false;
+			if (store.find(input[1]) != store.end()) {
+			
+				// erase expired data
+				if (store.exp(input[1]) && Store::get_time() > store.exp(input[1]))
+					store.erase(input[1]), res = "-1", null = true;
+				else {
+					pair<int, Entry*> get_output = (store.GET(input[1]));
+					if (get_output.first) {
+						if (auto* str = get_if<string>(&(get_output.second)->val))
+							res = *str;
+					} else return Store::ERR(ERR::WRONG_T, "");
+				}
+			
+			} else res = "-1", null = true;
+			
 			break;
+
+
+
+		// RPUSH command
+		case StringCoding::RPUSH:
+			// input should contain at least 3 arguments
+			// RPUSH list_key appended_value/s
+			if (input.size() < 3) return Store::ERR(ERR::NUM_ARG, "rpush");
+
+			if (store.find(input[1]) != store.end()) {
+
+				if (store.exp(input[1]) && Store::get_time() > store.exp(input[1]))
+					store.erase(input[1]);
+				else {
+					vector<string> input_vec;
+					for (int i = 2; i < input.size(); i++)
+						input_vec.pb(input[i]);
+
+					if (store.SET(input[1], {input_vec, 0}))
+						if (auto* vec = get_if<vector<string>>(&(store.GET(input[1]).second->val)))
+							res = to_string(vec->size()), num = true;
+				}
+
+			} else {
+				vector<string> input_vec;
+				for (int i = 2; i < input.size(); i++)
+					input_vec.pb(input[i]);
+
+				if (store.SET(input[1], {input_vec, 0}))
+					if (auto* vec = get_if<vector<string>>(&(store.GET(input[1]).second->val)))
+						res = to_string(vec->size()), num = true;
+			}
+
+			break;
+			
 	}
+
+
+
 	string resp;
 	if (null) {
+		// null string in RESP
 		resp = "$-1\r\n";
-	} else if (simple)
+	} else if (num)
+		resp = RESP_Parser::make_integer(res);
+	else if (simple)
 		resp = RESP_Parser::make_simple_string(res);
 	else resp = RESP_Parser::make_bulk_string(res);
 	return send(client_fd, resp.c_str(), resp.size(), 0);
