@@ -196,7 +196,7 @@ int Reply(vector<string> input, int client_fd) {
 
 
 
-		case StringCoding::BLPOP:
+		case StringCoding::BLPOP: {
 			if (input.size() != 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, "blpop").c_str(), Store::ERR(ERR::NUM_ARG, "blpop").size(), 0);
 			auto start = chrono::steady_clock::now();
 			bool found = false;
@@ -226,6 +226,25 @@ int Reply(vector<string> input, int client_fd) {
 
 
 			break;
+		}
+		
+
+		
+		case StringCoding::TYPE: {
+			if (input.size() != 2) return send(client_fd, Store::ERR(ERR::NUM_ARG, "type").c_str(), Store::ERR(ERR::NUM_ARG, "type").size(), 0);
+			auto data = store.GET(input[1]);
+			if (data.second == nullptr)
+				res = "none";
+			else {
+				auto& v = data.second->val;
+				if (holds_alternative<string>(v)) res = "string";
+				else if (holds_alternative<deque<string>>(v)) res = "list";
+				else if (holds_alternative<unordered_map<string, string>>(v)) res = "hash";
+				else if (holds_alternative<unordered_set<string>>(v)) res = "set";
+			}
+			simple = true;
+			break;
+		}
 
 
 	}

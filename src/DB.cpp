@@ -13,7 +13,7 @@ using namespace std;
 typedef long long L;
 
 struct Entry {
-  variant<string, deque<string>> val;
+  variant<string, deque<string>, unordered_set<string>, unordered_map<string, string>> val;
 	L exp;
 };
 enum class ERR {
