@@ -143,8 +143,8 @@ int Reply(vector<string> input, int client_fd) {
 			}
 			if (p.first) {
 				if (auto* vec = get_if<vector<string>>(&(p.second->val))) {
-					if (s < 0) s = vec->size()+s;
-					if (e < 0) e = vec->size()+e;
+					if (s < 0) s = max(0, (int)(vec->size()+s));
+					if (e < 0) e = min((int)vec->size()+e, (int)(vec->size())-1);
 					if (s <= e && s < vec->size())
 						for (int i = max(0, s); i <= min(e, (int)(vec->size())-1); i++)
 							res_arr.pb(vec->at(i));
