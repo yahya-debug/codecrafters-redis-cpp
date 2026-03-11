@@ -227,7 +227,7 @@ int Reply(vector<string> input, int client_fd) {
 
 			break;
 		}
-		
+
 
 		
 		case StringCoding::TYPE: {
@@ -241,10 +241,25 @@ int Reply(vector<string> input, int client_fd) {
 				else if (holds_alternative<deque<string>>(v)) res = "list";
 				else if (holds_alternative<unordered_map<string, string>>(v)) res = "hash";
 				else if (holds_alternative<unordered_set<string>>(v)) res = "set";
+				else if (holds_alternative<vector<Stream>>(v)) res = "stream";
 			}
 			simple = true;
 			break;
 		}
+
+
+
+		case StringCoding::XADD:
+			if (input.size() < 5) return send(client_fd, Store::ERR(ERR::NUM_ARG, "xadd").c_str(), Store::ERR(ERR::NUM_ARG, "xadd").size(), 0);
+			auto* vec = get_if<vector<Stream>>(&(store.GET(input[1]).second->val));
+			if (store.find(input[1]) == store.end() || vec) {
+				vector<Stream> stream;
+				Stream s; s.id = input[2];
+				for (int i = 3; i < input.size(); i+=2)
+					s.fields[input[i]] = input[i+1];
+				store.SET(input[1], Entry{stream, 0});
+				res = input[2];
+			}
 
 
 	}

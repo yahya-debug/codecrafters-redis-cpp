@@ -12,14 +12,33 @@
 using namespace std;
 typedef long long L;
 
+
+class Stream {
+  public:
+  string id;
+  unordered_map<string, string> fields;
+};
+
+
+
+
+
 struct Entry {
-  variant<string, deque<string>, unordered_set<string>, unordered_map<string, string>> val;
+  variant<string, deque<string>, unordered_set<string>, unordered_map<string, string>, vector<Stream>> val;
 	L exp;
 };
 enum class ERR {
   NUM_ARG,
   WRONG_T
 };
+
+
+
+
+
+
+
+
 class Store {
   public:
   
@@ -40,7 +59,13 @@ class Store {
           for (string s:*input_vec)
             if (front) vec->push_front(s); 
             else vec->push_back(s);
-    } else return 0;
+    } else if (holds_alternative<vector<Stream>>(value.val) && holds_alternative<vector<Stream>>(value.val));
+      // if (auto* vec = get_if<vector<Stream>>(&(store[key].val))) {
+      //   if (auto* input_vec = get_if<vector<Stream>>(&(value.val))) {
+      //     (*vec) = (*input_vec);
+      //   }
+      // }
+    else return 0;
     return 1;
   }
 
