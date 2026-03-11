@@ -141,12 +141,15 @@ int Reply(vector<string> input, int client_fd) {
 			} catch (const exception& e) {
 				break;
 			}
-			if (p.first)
-				if (auto* vec = get_if<vector<string>>(&(p.second->val)))
+			if (p.first) {
+				if (auto* vec = get_if<vector<string>>(&(p.second->val))) {
+					if (s < 0) s = vec->size()+s;
+					if (e < 0) e = vec->size()+e;
 					if (s <= e && s < vec->size())
 						for (int i = s; i <= min(e, (int)(vec->size())-1); i++)
 							res_arr.pb(vec->at(i));
-					
+				}
+			}
 			arr = true;
 			break;
 
