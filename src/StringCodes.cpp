@@ -23,6 +23,7 @@ class StringCoding {
     LPUSH,
     LRANGE,
     LLEN,
+    LPOP,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -34,6 +35,7 @@ class StringCoding {
     if (str == "LPUSH") return LPUSH;
     if (str == "LRANGE") return LRANGE;
     if (str == "LLEN") return LLEN;
+    if (str == "LPOP") return LPOP;
     return unknown;
   }
   static string command_code(const StringCodes& code) {
@@ -45,6 +47,7 @@ class StringCoding {
     if (code == LPUSH) return "lpush";
     if (code == LRANGE) return "lrange";
     if (code == LLEN) return "llen";
+    if (code == LPOP) return "lpop";
     return "";
   }
 };

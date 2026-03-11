@@ -37,7 +37,7 @@ int Reply(vector<string> input, int client_fd) {
 			break;
 		// ECHO command
 		case StringCoding::ECHO:
-			if (input.size() == 1) return Store::ERR(ERR::NUM_ARG, "echo");
+			if (input.size() == 1) return send(client_fd, Store::ERR(ERR::NUM_ARG, "echo").c_str(), Store::ERR(ERR::NUM_ARG, "echo").size(), 0);
 			res = "";
 			for (int i = 1; i < input.size(); i++)
 				res += input[i] + (i == input.size()-1 ? "":" ");
@@ -49,7 +49,7 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::SET:
 			// Contains either 3 or 5 arguments only
 			// SET Key Value (EX/PX) (Time To Live)
-			if (input.size() < 3) return Store::ERR(ERR::NUM_ARG, "set");
+			if (input.size() < 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, "set").c_str(), Store::ERR(ERR::NUM_ARG, "set").size(), 0);
 			else if (input.size() == 3) {
 				// by defult we use 0 to detect non-expiring data
 				store.SET(input[1], {input[2], 0});
@@ -77,7 +77,7 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::GET:
 			// input should contain only 2 arguments the command and the key
 			// GET Key
-			if (input.size() != 2) return Store::ERR(ERR::NUM_ARG, "get");
+			if (input.size() != 2) return send(client_fd, Store::ERR(ERR::NUM_ARG, "get").c_str(), Store::ERR(ERR::NUM_ARG, "get").size(), 0);
 			
 			// returns bulk string
 			simple = false;
@@ -91,7 +91,7 @@ int Reply(vector<string> input, int client_fd) {
 					if (get_output.first) {
 						if (auto* str = get_if<string>(&(get_output.second)->val))
 							res = *str;
-					} else return Store::ERR(ERR::WRONG_T, "");
+					} else return send(client_fd, Store::ERR(ERR::WRONG_T, "").c_str(), Store::ERR(ERR::WRONG_T, "").size(), 0);
 				}
 			
 			} else res = "-1", null = true;
@@ -107,7 +107,7 @@ int Reply(vector<string> input, int client_fd) {
 			// RPUSH list_key appended_value/s
 			deque<string> input_vec;
 			string cm_name = StringCoding::command_code(StringCoding::command_string(input[0]));
-			if (input.size() < 3) return Store::ERR(ERR::NUM_ARG, cm_name);
+			if (input.size() < 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, cm_name).c_str(), Store::ERR(ERR::NUM_ARG, cm_name).size(), 0);
 
 			if (store.find(input[1]) != store.end()) {
 
@@ -140,6 +140,7 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::LRANGE: {
 			// input sould consist of 4 arguments
 			// LRANGE list_key start end
+			if (input.size() != 4) return send(client_fd, Store::ERR(ERR::NUM_ARG, "llrange").c_str(), Store::ERR(ERR::NUM_ARG, "llrange").size(), 0);
 			pair<int, Entry*> p = store.GET(input[1]);
 			int s, e;
 			try {
@@ -150,10 +151,10 @@ int Reply(vector<string> input, int client_fd) {
 			if (p.first) {
 				if (auto* vec = get_if<deque<string>>(&(p.second->val))) {
 					if (s < 0) s = max(0, (int)(vec->size()+s));
-					if (e < 0) e = min((int)vec->size()+e, (int)(vec->size())-1);
+					if (e < 0) e = min((int)(vec->size()+e), (int)(vec->size())-1);
 					if (s <= e && s < vec->size())
 						for (int i = max(0, s); i <= min(e, (int)(vec->size())-1); i++)
-							res_arr.pb(vec->at(i));
+							res_arr.pb((*vec)[i]);
 				}
 			}
 			arr = true;
@@ -171,6 +172,26 @@ int Reply(vector<string> input, int client_fd) {
 
 			}
 			num = true;
+			break;
+
+
+
+		case StringCoding::LPOP:
+			if (input.size() > 3 || input.size() < 2) return send(client_fd, Store::ERR(ERR::NUM_ARG, "lpop").c_str(), Store::ERR(ERR::NUM_ARG, "lpop").size(), 0);
+			if (store.find(input[1]) == store.end()) null = true;
+			if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val))) {
+
+				try {
+					deque<string> after_pop = store.ListRemove(input[1], (input.size() == 3 ? stoi(input[2]):1));
+					if (after_pop.size() == 1)
+						res = after_pop.front();
+					else res_arr = after_pop, arr = true;
+				} catch (const exception& e) {}
+
+
+			} else null = true;
+
+			break;
 	}
 
 

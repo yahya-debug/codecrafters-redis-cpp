@@ -50,6 +50,16 @@ class Store {
     return {1, &store[key]};
   }
 
+  deque<string> ListRemove(const string& key, int count) {
+    deque<string> ret;
+    if (store.find(key) == store.end())
+      return ret;
+    if (auto* vec = get_if<deque<string>>(&(store[key].val)))
+      for (int i = 0; i < count; i++)
+        ret.push_back(vec->front()), vec->pop_front();
+    return ret;
+  }
+
   L exp(const string& key) {
     return store[key].exp;
   }
@@ -70,15 +80,15 @@ class Store {
     return store.erase(key);
   }
 
-  static int ERR(ERR err, const string& command) {
+  static string ERR(ERR err, const string& command) {
     switch (err) {
       case ERR::NUM_ARG:
-        cerr << "ERR wrong number of arguments for '" + command + "' command\n";
+        return "ERR wrong number of arguments for '" + command + "' command\n";
         break;
       case ERR::WRONG_T:
-        cerr << "WRONGTYPE Operation against a key holding the wrong kind of value\n";
+        return "WRONGTYPE Operation against a key holding the wrong kind of value\n";
     }
-    return -1;
+    return "";
   }
 
 };
