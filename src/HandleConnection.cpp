@@ -192,6 +192,42 @@ int Reply(vector<string> input, int client_fd) {
 			} else null = true;
 
 			break;
+
+
+
+
+		case StringCoding::BLPOP:
+			if (input.size() != 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, "blpop").c_str(), Store::ERR(ERR::NUM_ARG, "blpop").size(), 0);
+			auto start = chrono::steady_clock::now();
+			bool found = false;
+			double to;
+			try {
+				to = stod(input[2]);
+			} catch (const exception& e) {}
+			while (true) {
+				
+				if (store.find(input[1]) != store.end()) {
+					if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val))) {
+						if (!vec->empty()) {
+							res_arr.pb(input[1]), res_arr.pb(vec->front()), vec->_pf(), arr = found = true;
+							break;
+						}
+					}
+				}
+
+				if (to) {
+					auto now = chrono::steady_clock::now();
+					chrono::duration<double> duration = now - start;
+					if (duration.count() >= to) break;
+				}
+				this_thread::sleep_for(chrono::microseconds(100));
+			}
+			if (!found) null = true;
+
+			
+			break;
+
+
 	}
 
 
