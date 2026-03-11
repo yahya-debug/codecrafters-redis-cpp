@@ -13,7 +13,7 @@ using namespace std;
 typedef long long L;
 
 struct Entry {
-  variant<string, vector<string>> val;
+  variant<string, deque<string>> val;
 	L exp;
 };
 enum class ERR {
@@ -29,16 +29,17 @@ class Store {
     return chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()).count();
   }
 
-  int SET(const string& key, Entry value) {
+  int SET(const string& key, Entry value, bool front = false) {
     if (store.find(key) == store.end()) 
       store[key]= value;
     else if (holds_alternative<string>(store[key].val) && holds_alternative<string>(value.val))
       store[key] = value;
-    else if (holds_alternative<vector<string>>(store[key].val) && holds_alternative<vector<string>>(value.val)) {
-      if (auto* vec = get_if<vector<string>>(&(store[key].val)))
-        if (auto* input_vec = get_if<vector<string>>(&(value.val)))
+    else if (holds_alternative<deque<string>>(store[key].val) && holds_alternative<deque<string>>(value.val)) {
+      if (auto* vec = get_if<deque<string>>(&(store[key].val)))
+        if (auto* input_vec = get_if<deque<string>>(&(value.val)))
           for (string s:*input_vec)
-            vec->push_back(s);
+            if (front) vec->push_front(s); 
+            else vec->push_back(s);
     } else return 0;
     return 1;
   }

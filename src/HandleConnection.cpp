@@ -12,6 +12,9 @@
 #include "StringCodes.cpp"
 #include "DB.cpp"
 #define all(a) a.begin(), a.end()
+#define _pb pop_back
+#define pf push_front
+#define _pf pop_front
 using namespace std;
 typedef long long L;
 
@@ -20,7 +23,7 @@ Store store;
 
 int Reply(vector<string> input, int client_fd) {
 	string res;
-	vector<string> res_arr;
+	deque<string> res_arr;
 	bool simple = false; // Determine if it is a simple string response
 	bool null = false;
 	bool num = false;
@@ -99,35 +102,38 @@ int Reply(vector<string> input, int client_fd) {
 
 		// RPUSH command
 		case StringCoding::RPUSH:
+		case StringCoding::LPUSH: {
 			// input should contain at least 3 arguments
 			// RPUSH list_key appended_value/s
-			if (input.size() < 3) return Store::ERR(ERR::NUM_ARG, "rpush");
+			deque<string> input_vec;
+			string cm_name = StringCoding::command_code(StringCoding::command_string(input[0]));
+			if (input.size() < 3) return Store::ERR(ERR::NUM_ARG, cm_name);
 
 			if (store.find(input[1]) != store.end()) {
 
 				if (store.exp(input[1]) && Store::get_time() > store.exp(input[1]))
 					store.erase(input[1]);
 				else {
-					vector<string> input_vec;
 					for (int i = 2; i < input.size(); i++)
 						input_vec.pb(input[i]);
 
-					if (store.SET(input[1], {input_vec, 0}))
-						if (auto* vec = get_if<vector<string>>(&(store.GET(input[1]).second->val)))
+					if (store.SET(input[1], {input_vec, 0}, cm_name == "lpush"))
+						if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val)))
 							res = to_string(vec->size()), num = true;
 				}
 
 			} else {
-				vector<string> input_vec;
 				for (int i = 2; i < input.size(); i++)
-					input_vec.pb(input[i]);
+					if (cm_name == "lpush") input_vec.pf(input[i]); 
+					else input_vec.pb(input[i]);
 
-				if (store.SET(input[1], {input_vec, 0}))
-					if (auto* vec = get_if<vector<string>>(&(store.GET(input[1]).second->val)))
+				if (store.SET(input[1], {input_vec, 0}, cm_name == "lpush"))
+					if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val)))
 						res = to_string(vec->size()), num = true;
 			}
 
 			break;
+		}
 			
 
 
@@ -142,7 +148,7 @@ int Reply(vector<string> input, int client_fd) {
 				break;
 			}
 			if (p.first) {
-				if (auto* vec = get_if<vector<string>>(&(p.second->val))) {
+				if (auto* vec = get_if<deque<string>>(&(p.second->val))) {
 					if (s < 0) s = max(0, (int)(vec->size()+s));
 					if (e < 0) e = min((int)vec->size()+e, (int)(vec->size())-1);
 					if (s <= e && s < vec->size())

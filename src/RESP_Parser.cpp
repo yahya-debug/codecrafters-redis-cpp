@@ -54,7 +54,7 @@ class RESP_Parser {
   static string make_integer(const string& str) {
     return ":" + str + "\r\n";
   }
-  static string make_array(const vector<string>& arr) {
+  static string make_array(const deque<string>& arr) {
     string ret = "*" + to_string(arr.size()) + "\r\n";
     for (string s:arr)
       ret += "$" + to_string(s.length()) + "\r\n" + s + "\r\n";

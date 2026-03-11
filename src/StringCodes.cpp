@@ -20,6 +20,7 @@ class StringCoding {
     SET,
     GET,
     RPUSH,
+    LPUSH,
     LRANGE,
     unknown
   };
@@ -29,8 +30,19 @@ class StringCoding {
     if (str == "SET") return SET;
     if (str == "GET") return GET;
     if (str == "RPUSH") return RPUSH;
+    if (str == "LPUSH") return LPUSH;
     if (str == "LRANGE") return LRANGE;
     return unknown;
+  }
+  static string command_code(const StringCodes& code) {
+    if (code == PING) return "ping";
+    if (code == ECHO) return "echo";
+    if (code == SET) return "set";
+    if (code == GET) return "get";
+    if (code == RPUSH) return "rpush";
+    if (code == LPUSH) return "lpush";
+    if (code == LRANGE) return "lrange";
+    return "";
   }
 };
 
