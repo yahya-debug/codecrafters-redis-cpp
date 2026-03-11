@@ -25,7 +25,7 @@ int Reply(vector<string> input, int client_fd) {
 	string res;
 	deque<string> res_arr;
 	bool simple = false; // Determine if it is a simple string response
-	bool null = false;
+	bool null = false, null_arr = false;
 	bool num = false;
 	bool arr = false;
 	
@@ -222,9 +222,9 @@ int Reply(vector<string> input, int client_fd) {
 				}
 				this_thread::sleep_for(chrono::microseconds(100));
 			}
-			if (!found) null = true;
+			if (!found) null_arr = true;
 
-			
+
 			break;
 
 
@@ -235,6 +235,8 @@ int Reply(vector<string> input, int client_fd) {
 	string resp;
 	if (null) // null string in RESP
 		resp = "$-1\r\n";
+	else if (null_arr)
+		resp = "*-1\r\n";
 	else if (arr)
 		resp = RESP_Parser::make_array(res_arr);
 	else if (num)
