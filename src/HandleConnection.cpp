@@ -137,7 +137,7 @@ int Reply(vector<string> input, int client_fd) {
 			
 
 
-		case StringCoding::LRANGE:
+		case StringCoding::LRANGE: {
 			// input sould consist of 4 arguments
 			// LRANGE list_key start end
 			pair<int, Entry*> p = store.GET(input[1]);
@@ -158,8 +158,19 @@ int Reply(vector<string> input, int client_fd) {
 			}
 			arr = true;
 			break;
+		}
 
+		
 
+		case StringCoding::LLEN:
+			if (store.find(input[1]) == store.end() || !(get_if<deque<string>>(&(store.GET(input[1]).second->val)))) res = "0";
+			else {
+
+				auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val));
+				res = to_string(vec->size());
+
+			}
+			num = true;
 	}
 
 
