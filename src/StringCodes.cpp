@@ -20,6 +20,7 @@ class StringCoding {
     SET,
     GET,
     RPUSH,
+    LRANGE,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -28,6 +29,7 @@ class StringCoding {
     if (str == "SET") return SET;
     if (str == "GET") return GET;
     if (str == "RPUSH") return RPUSH;
+    if (str == "LRANGE") return LRANGE;
     return unknown;
   }
 };

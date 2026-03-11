@@ -20,9 +20,11 @@ Store store;
 
 int Reply(vector<string> input, int client_fd) {
 	string res;
+	vector<string> res_arr;
 	bool simple = false; // Determine if it is a simple string response
 	bool null = false;
 	bool num = false;
+	bool arr = false;
 	
 	switch (StringCoding::command_string(input[0])) {
 		// PING command
@@ -127,15 +129,38 @@ int Reply(vector<string> input, int client_fd) {
 
 			break;
 			
+
+
+		case StringCoding::LRANGE:
+			// input sould consist of 4 arguments
+			// LRANGE list_key start end
+			pair<int, Entry*> p = store.GET(input[1]);
+			int s, e;
+			try {
+				s = stoi(input[2]), e = stoi(input[3]);
+			} catch (const exception& e) {
+				break;
+			}
+			if (p.first)
+				if (auto* vec = get_if<vector<string>>(&(p.second->val)))
+					if (s <= e && s < vec->size())
+						for (int i = s; i <= min(e, (int)(vec->size())-1); i++)
+							res_arr.pb(vec->at(i));
+					
+			arr = true;
+			break;
+
+
 	}
 
 
 
 	string resp;
-	if (null) {
-		// null string in RESP
+	if (null) // null string in RESP
 		resp = "$-1\r\n";
-	} else if (num)
+	else if (arr)
+		resp = RESP_Parser::make_array(res_arr);
+	else if (num)
 		resp = RESP_Parser::make_integer(res);
 	else if (simple)
 		resp = RESP_Parser::make_simple_string(res);
