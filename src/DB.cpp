@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <bits/stdc++.h>
+#include "Yahya.cpp"
 #define all(a) a.begin(), a.end()
 using namespace std;
 typedef long long L;
@@ -17,6 +18,24 @@ class Stream {
   public:
   string id;
   unordered_map<string, string> fields;
+
+  static bool validate_id(const string& str, vector<Stream>& this_) {
+    if (str.find('-') == string::npos) return false;
+    try {
+      vector<string> tok = Yahya::split(str, "-");
+      vector<string> prev;
+      if (!this_.empty()) prev = Yahya::split(this_.back().id, "-");
+      else prev = {"0", "0"};
+      if (tok.size() != 2 || prev.size() != 2) return false;
+      L ms = stoll(tok[0]), sn = stoll(tok[1]);
+      if (stoll(prev[0]) > ms) return false;
+      else if (stoll(prev[0]) == ms) {
+        if (stoll(prev[1]) >= sn) return false;
+      }
+      cout << this_.size();
+    } catch (const exception& e) {return false;}
+    return true;
+  }
 };
 
 
@@ -50,7 +69,7 @@ class Store {
 
   int SET(const string& key, Entry value, bool front = false) {
     if (store.find(key) == store.end()) 
-      store[key]= value;
+      store[key] = value;
     else if (holds_alternative<string>(store[key].val) && holds_alternative<string>(value.val))
       store[key] = value;
     else if (holds_alternative<deque<string>>(store[key].val) && holds_alternative<deque<string>>(value.val)) {
@@ -59,13 +78,14 @@ class Store {
           for (string s:*input_vec)
             if (front) vec->push_front(s); 
             else vec->push_back(s);
-    } else if (holds_alternative<vector<Stream>>(value.val) && holds_alternative<vector<Stream>>(value.val));
-      // if (auto* vec = get_if<vector<Stream>>(&(store[key].val))) {
-      //   if (auto* input_vec = get_if<vector<Stream>>(&(value.val))) {
-      //     (*vec) = (*input_vec);
-      //   }
-      // }
-    else return 0;
+    } else if (holds_alternative<vector<Stream>>(store[key].val) && holds_alternative<vector<Stream>>(value.val)) {
+      if (auto* vec = get_if<vector<Stream>>(&(store[key].val))) {
+        if (auto* input_vec = get_if<vector<Stream>>(&(value.val))) {
+          for (Stream i:*input_vec)
+            (*vec).push_back(i);
+        }
+      }
+    } else return 0;
     return 1;
   }
 
