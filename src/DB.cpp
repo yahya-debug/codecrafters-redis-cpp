@@ -15,6 +15,8 @@ typedef long long L;
 
 
 class Stream {
+  private:
+  // static set<string> used;
   public:
   string id;
   unordered_map<string, string> fields;
@@ -32,8 +34,33 @@ class Stream {
       else if (stoll(prev[0]) == ms) {
         if (stoll(prev[1]) >= sn) return false;
       }
+      // used.insert(tok[0]);
     } catch (const exception& e) {return false;}
     return true;
+  }
+  static void generate_id(string& str, vector<Stream>& this_) {
+    if (str == "*") {
+      auto now = chrono::steady_clock::now();
+      auto dur = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch());
+      if (!this_.empty()) {
+        vector<string> prev = Yahya::split(this_.back().id, "-");
+        str = to_string(stoll(prev[0])) + "-";
+        if (stoll(prev[0]) == dur.count())
+          str += to_string(stoll(prev[1])+1);
+      } else str = to_string(dur.count()) + "-0";
+      return;
+    }
+    if (str.find("-") != string::npos) {
+      vector<string> tok = Yahya::split(str, "-");
+      if (!this_.empty()) {
+        vector<string> prev = Yahya::split(this_.back().id, "-");
+        str = to_string(stoll(prev[0])) + "-";
+        if (stoll(prev[0]) == stoll(tok[0]))
+          str += to_string(stoll(prev[1])+1);
+      } else str = tok[0] + "-0";
+
+      return;
+    }
   }
 };
 
