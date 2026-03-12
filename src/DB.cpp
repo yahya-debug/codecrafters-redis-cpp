@@ -32,7 +32,6 @@ class Stream {
       else if (stoll(prev[0]) == ms) {
         if (stoll(prev[1]) >= sn) return false;
       }
-      cout << this_.size();
     } catch (const exception& e) {return false;}
     return true;
   }

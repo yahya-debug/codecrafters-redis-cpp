@@ -254,10 +254,10 @@ int Reply(vector<string> input, int client_fd) {
 			if (input.size() < 5) return send(client_fd, Store::ERR(ERR::NUM_ARG, "xadd").c_str(), Store::ERR(ERR::NUM_ARG, "xadd").size(), 0);
 			auto* vec = get_if<vector<Stream>>(&(store.GET(input[1]).second->val));
 			if (store.find(input[1]) == store.end() || vec) {
+				if (input[2] == "0-0") res = "ERR The ID specified in XADD must be greater than 0-0", err = true;
+				if (store.find(input[1]) != store.end() && !Stream::validate_id(input[2], *vec))
+					res = "ERR The ID specified in XADD is equal or smaller than the target stream top item", err = true;
 				if (store.find(input[1]) == store.end() || Stream::validate_id(input[2], *vec)) {
-					if (store.find(input[1]) != store.end() && !Stream::validate_id(input[2], *vec))
-						res = "ERR The ID specified in XADD is equal or smaller than the target stream top item", err = true;
-					if (input[2] == "0-0") res = "ERR The ID specified in XADD must be greater than 0-0", err = true;
 					vector<Stream> stream;
 					Stream s; s.id = input[2];
 					for (int i = 3; i < input.size(); i+=2)
