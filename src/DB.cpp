@@ -57,7 +57,8 @@ class Stream {
         str = to_string(stoll(prev[0])) + "-";
         if (stoll(prev[0]) == stoll(tok[0]))
           str += to_string(stoll(prev[1])+1);
-      } else str = tok[0] + "-0";
+      } else if (str == "0-*") str = "0-1"; 
+      else str = tok[0] + "-0";
 
       return;
     }
