@@ -60,4 +60,7 @@ class RESP_Parser {
       ret += "$" + to_string(s.length()) + "\r\n" + s + "\r\n";
     return ret;
   }
+  static string make_simple_error(const string& str) {
+    return "-" + str + "\r\n";
+  }
 };

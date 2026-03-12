@@ -28,6 +28,7 @@ int Reply(vector<string> input, int client_fd) {
 	bool null = false, null_arr = false;
 	bool num = false;
 	bool arr = false;
+	bool err = false;
 	
 	switch (StringCoding::command_string(input[0])) {
 		// PING command
@@ -254,6 +255,9 @@ int Reply(vector<string> input, int client_fd) {
 			auto* vec = get_if<vector<Stream>>(&(store.GET(input[1]).second->val));
 			if (store.find(input[1]) == store.end() || vec) {
 				if (store.find(input[1]) == store.end() || Stream::validate_id(input[2], *vec)) {
+					if (store.find(input[1]) != store.end() && !Stream::validate_id(input[2], *vec))
+						res = "ERR The ID specified in XADD is equal or smaller than the target stream top item", err = true;
+					if (input[2] == "0-0") res = "ERR The ID specified in XADD must be greater than 0-0", err = true;
 					vector<Stream> stream;
 					Stream s; s.id = input[2];
 					for (int i = 3; i < input.size(); i+=2)
@@ -274,6 +278,8 @@ int Reply(vector<string> input, int client_fd) {
 		resp = "$-1\r\n";
 	else if (null_arr)
 		resp = "*-1\r\n";
+	else if (err)
+		resp = RESP_Parser::make_simple_error(res);
 	else if (arr)
 		resp = RESP_Parser::make_array(res_arr);
 	else if (num)
