@@ -26,7 +26,7 @@ class Stream {
     try {
       vector<string> tok = Yahya::split(str, "-");
       vector<string> prev;
-      if (!this_.empty()) prev = Yahya::split(this_.back().id, "-");
+      if (!this_.empty()) prev = Yahya::split(this_.back().id, "-"), cout << "ds";
       else prev = {"0", "0"};
       if (tok.size() != 2 || prev.size() != 2) return false;
       L ms = stoll(tok[0]), sn = stoll(tok[1]);
@@ -44,9 +44,10 @@ class Stream {
       auto dur = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch());
       if (!this_.empty()) {
         vector<string> prev = Yahya::split(this_.back().id, "-");
-        str = to_string(stoll(prev[0])) + "-";
+        str = to_string(dur.count()) + "-";
         if (stoll(prev[0]) == dur.count())
           str += to_string(stoll(prev[1])+1);
+        else str += "0";
       } else str = to_string(dur.count()) + "-0";
       return;
     }
@@ -54,9 +55,10 @@ class Stream {
       vector<string> tok = Yahya::split(str, "-");
       if (!this_.empty()) {
         vector<string> prev = Yahya::split(this_.back().id, "-");
-        str = to_string(stoll(prev[0])) + "-";
+        str = to_string(stoll(tok[0])) + "-";
         if (stoll(prev[0]) == stoll(tok[0]))
           str += to_string(stoll(prev[1])+1);
+        else str += "0";
       } else if (str == "0-*") str = "0-1"; 
       else str = tok[0] + "-0";
 
