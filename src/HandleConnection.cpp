@@ -187,10 +187,10 @@ int Reply(int client, vector<string> input) {
 
 				try {
 					deque<RespNode> after_pop = store.ListRemove(input[1], (input.size() == 3 ? stoi(input[2]):1));
-					if (after_pop.size() == 1)
+					if (after_pop.size() == 1) {
 						if (auto* a_p = get_if<string>(&after_pop.front().val))
 							res = (*a_p).front();
-					else res_arr = after_pop, arr = true;
+					} else res_arr = after_pop, arr = true;
 				} catch (const exception& e) {}
 
 
