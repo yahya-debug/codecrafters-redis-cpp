@@ -40,7 +40,7 @@ class Stream {
   }
   static void generate_id(string& str, vector<Stream>& this_) {
     if (str == "*") {
-      auto now = chrono::steady_clock::now();
+      auto now = chrono::system_clock::now();
       auto dur = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch());
       if (!this_.empty()) {
         vector<string> prev = Yahya::split(this_.back().id, "-");
