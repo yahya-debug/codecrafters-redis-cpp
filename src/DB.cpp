@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <bits/stdc++.h>
 #include "Yahya.cpp"
+#include "RESP_Parser.cpp"
 #define all(a) a.begin(), a.end()
 using namespace std;
 typedef long long L;
@@ -124,13 +125,13 @@ class Store {
     return {1, &store[key]};
   }
 
-  deque<string> ListRemove(const string& key, int count) {
-    deque<string> ret;
+  deque<RespNode> ListRemove(const string& key, int count) {
+    deque<RespNode> ret;
     if (store.find(key) == store.end())
       return ret;
     if (auto* vec = get_if<deque<string>>(&(store[key].val)))
       for (int i = 0; i < count; i++)
-        ret.push_back(vec->front()), vec->pop_front();
+        ret.push_back(RespNode{vec->front()}), vec->pop_front();
     return ret;
   }
 

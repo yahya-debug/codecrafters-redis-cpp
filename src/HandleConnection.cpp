@@ -19,11 +19,15 @@ using namespace std;
 typedef long long L;
 
 Store store;
+int client;
 
+int send_(string str) {
+	return send(client, str.c_str(), str.size(), 0);
+}
 
-int Reply(vector<string> input, int client_fd) {
+int Reply(vector<string> input) {
 	string res;
-	deque<string> res_arr;
+	deque<RespNode> res_arr;
 	bool simple = false; // Determine if it is a simple string response
 	bool null = false, null_arr = false;
 	bool num = false;
@@ -38,7 +42,7 @@ int Reply(vector<string> input, int client_fd) {
 			break;
 		// ECHO command
 		case StringCoding::ECHO:
-			if (input.size() == 1) return send(client_fd, Store::ERR(ERR::NUM_ARG, "echo").c_str(), Store::ERR(ERR::NUM_ARG, "echo").size(), 0);
+			if (input.size() == 1) return send_(Store::ERR(ERR::NUM_ARG, "echo"));
 			res = "";
 			for (int i = 1; i < input.size(); i++)
 				res += input[i] + (i == input.size()-1 ? "":" ");
@@ -50,7 +54,7 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::SET:
 			// Contains either 3 or 5 arguments only
 			// SET Key Value (EX/PX) (Time To Live)
-			if (input.size() < 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, "set").c_str(), Store::ERR(ERR::NUM_ARG, "set").size(), 0);
+			if (input.size() < 3) return send_(Store::ERR(ERR::NUM_ARG, "set"));
 			else if (input.size() == 3) {
 				// by defult we use 0 to detect non-expiring data
 				store.SET(input[1], {input[2], 0});
@@ -78,7 +82,7 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::GET:
 			// input should contain only 2 arguments the command and the key
 			// GET Key
-			if (input.size() != 2) return send(client_fd, Store::ERR(ERR::NUM_ARG, "get").c_str(), Store::ERR(ERR::NUM_ARG, "get").size(), 0);
+			if (input.size() != 2) return send_(Store::ERR(ERR::NUM_ARG, "get"));
 			
 			// returns bulk string
 			simple = false;
@@ -92,7 +96,7 @@ int Reply(vector<string> input, int client_fd) {
 					if (get_output.first) {
 						if (auto* str = get_if<string>(&(get_output.second)->val))
 							res = *str;
-					} else return send(client_fd, Store::ERR(ERR::WRONG_T, "").c_str(), Store::ERR(ERR::WRONG_T, "").size(), 0);
+					} else return send_(Store::ERR(ERR::WRONG_T, ""));
 				}
 			
 			} else res = "-1", null = true;
@@ -108,7 +112,7 @@ int Reply(vector<string> input, int client_fd) {
 			// RPUSH list_key appended_value/s
 			deque<string> input_vec;
 			string cm_name = StringCoding::command_code(StringCoding::command_string(input[0]));
-			if (input.size() < 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, cm_name).c_str(), Store::ERR(ERR::NUM_ARG, cm_name).size(), 0);
+			if (input.size() < 3) return send_(Store::ERR(ERR::NUM_ARG, cm_name));
 
 			if (store.find(input[1]) != store.end()) {
 
@@ -141,7 +145,7 @@ int Reply(vector<string> input, int client_fd) {
 		case StringCoding::LRANGE: {
 			// input sould consist of 4 arguments
 			// LRANGE list_key start end
-			if (input.size() != 4) return send(client_fd, Store::ERR(ERR::NUM_ARG, "llrange").c_str(), Store::ERR(ERR::NUM_ARG, "llrange").size(), 0);
+			if (input.size() != 4) return send_(Store::ERR(ERR::NUM_ARG, "llrange"));
 			pair<int, Entry*> p = store.GET(input[1]);
 			int s, e;
 			try {
@@ -155,7 +159,7 @@ int Reply(vector<string> input, int client_fd) {
 					if (e < 0) e = min((int)(vec->size()+e), (int)(vec->size())-1);
 					if (s <= e && s < vec->size())
 						for (int i = max(0, s); i <= min(e, (int)(vec->size())-1); i++)
-							res_arr.pb((*vec)[i]);
+							res_arr.pb(RespNode{(*vec)[i]});
 				}
 			}
 			arr = true;
@@ -178,14 +182,15 @@ int Reply(vector<string> input, int client_fd) {
 
 
 		case StringCoding::LPOP:
-			if (input.size() > 3 || input.size() < 2) return send(client_fd, Store::ERR(ERR::NUM_ARG, "lpop").c_str(), Store::ERR(ERR::NUM_ARG, "lpop").size(), 0);
+			if (input.size() > 3 || input.size() < 2) return send_(Store::ERR(ERR::NUM_ARG, "lpop"));
 			if (store.find(input[1]) == store.end()) null = true;
 			if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val))) {
 
 				try {
-					deque<string> after_pop = store.ListRemove(input[1], (input.size() == 3 ? stoi(input[2]):1));
+					deque<RespNode> after_pop = store.ListRemove(input[1], (input.size() == 3 ? stoi(input[2]):1));
 					if (after_pop.size() == 1)
-						res = after_pop.front();
+						if (auto* a_p = get_if<string>(&after_pop.front().val))
+							res = (*a_p).front();
 					else res_arr = after_pop, arr = true;
 				} catch (const exception& e) {}
 
@@ -198,7 +203,7 @@ int Reply(vector<string> input, int client_fd) {
 
 
 		case StringCoding::BLPOP: {
-			if (input.size() != 3) return send(client_fd, Store::ERR(ERR::NUM_ARG, "blpop").c_str(), Store::ERR(ERR::NUM_ARG, "blpop").size(), 0);
+			if (input.size() != 3) return send_(Store::ERR(ERR::NUM_ARG, "blpop"));
 			auto start = chrono::steady_clock::now();
 			bool found = false;
 			double to;
@@ -210,7 +215,7 @@ int Reply(vector<string> input, int client_fd) {
 				if (store.find(input[1]) != store.end()) {
 					if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val))) {
 						if (!vec->empty()) {
-							res_arr.pb(input[1]), res_arr.pb(vec->front()), vec->_pf(), arr = found = true;
+							res_arr.pb(RespNode{input[1]}), res_arr.pb(RespNode{vec->front()}), vec->_pf(), arr = found = true;
 							break;
 						}
 					}
@@ -232,7 +237,7 @@ int Reply(vector<string> input, int client_fd) {
 
 		
 		case StringCoding::TYPE: {
-			if (input.size() != 2) return send(client_fd, Store::ERR(ERR::NUM_ARG, "type").c_str(), Store::ERR(ERR::NUM_ARG, "type").size(), 0);
+			if (input.size() != 2) return send_(Store::ERR(ERR::NUM_ARG, "type"));
 			auto data = store.GET(input[1]);
 			if (data.second == nullptr)
 				res = "none";
@@ -250,8 +255,8 @@ int Reply(vector<string> input, int client_fd) {
 
 
 
-		case StringCoding::XADD:
-			if (input.size() < 5) return send(client_fd, Store::ERR(ERR::NUM_ARG, "xadd").c_str(), Store::ERR(ERR::NUM_ARG, "xadd").size(), 0);
+		case StringCoding::XADD: {
+			if (input.size() < 5) return send_(Store::ERR(ERR::NUM_ARG, "xadd"));
 			auto* vec = get_if<vector<Stream>>(&(store.GET(input[1]).second->val));
 			if (store.find(input[1]) == store.end() || vec) {
 				vector<Stream> stream;
@@ -270,7 +275,65 @@ int Reply(vector<string> input, int client_fd) {
 					res = input[2];
 				}
 			}
+			break;
+		}
 
+
+
+		case StringCoding::XRANGE: {
+        // 1. Basic Validation
+        if (input.size() < 4) return send_(Store::ERR(ERR::NUM_ARG, "xrange"));
+        
+        auto data = store.GET(input[1]);
+        if (data.second == nullptr) {
+            // Key doesn't exist: Redis returns an empty array
+            arr = true; 
+            break;
+        }
+
+        // Use vector<Stream> to match your XADD implementation
+        auto* vec = get_if<vector<Stream>>(&(data.second->val));
+        if (!vec) return send_(Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
+
+        // 2. ID Normalization
+        string startId = input[2];
+        string endId = input[3];
+
+        // Handle "-" and "+" special characters
+        if (startId == "-") startId = "0-0";
+        else if (startId.find('-') == string::npos) startId += "-0";
+
+        if (endId == "+") endId = "9999999999999-9999999999999"; // Effective infinity
+        else if (endId.find('-') == string::npos) endId += "-18446744073709551615"; // Max ULL
+
+        // 3. Binary Search
+        // Note: Redis Stream IDs (strings) compare correctly lexicographically 
+        // as long as the timestamps have the same length or we use a custom comparator.
+        auto startIt = lower_bound(vec->begin(), vec->end(), startId, 
+            [](const Stream& s, const string& id) { return s.id < id; });
+        
+        auto endIt = upper_bound(vec->begin(), vec->end(), endId, 
+            [](const string& id, const Stream& s) { return id < s.id; });
+
+        // 4. Build the RESP response
+        for (auto i = startIt; i != endIt; ++i) {
+            deque<RespNode> entry;
+            entry.push_back(RespNode{i->id}); // The ID of the entry
+            
+            deque<RespNode> fields;
+            for (const auto& [key, val] : i->fields) {
+                fields.push_back(RespNode{key});
+                fields.push_back(RespNode{val});
+            }
+            entry.push_back(RespNode{fields}); // The fields/values array
+            res_arr.push_back(RespNode{entry}); // Wrap entry in result array
+        }
+        
+        arr = true;
+        break;
+    }
+
+			
 
 	}
 
@@ -283,14 +346,16 @@ int Reply(vector<string> input, int client_fd) {
 		resp = "*-1\r\n";
 	else if (err)
 		resp = RESP_Parser::make_simple_error(res);
-	else if (arr)
-		resp = RESP_Parser::make_array(res_arr);
+	else if (arr) {
+		RespNode rn = {res_arr};
+		resp = RESP_Parser::make_array(rn);
+	}
 	else if (num)
 		resp = RESP_Parser::make_integer(res);
 	else if (simple)
 		resp = RESP_Parser::make_simple_string(res);
 	else resp = RESP_Parser::make_bulk_string(res);
-	return send(client_fd, resp.c_str(), resp.size(), 0);
+	return send_(resp);
 }
 
 
@@ -302,7 +367,7 @@ void handle_connectoin(int client_fd) {
     // returns number of bytes, takes the data from user as a pointer in the memory and the socket we will listen to
     size_t bytes_rcv = recv(client_fd, buf.data(), buf.size(), 0);
 
-
+		client = client_fd;
     // if -1 then it is an error
     if (bytes_rcv < 0) {
       cerr << "Error\n";
@@ -319,7 +384,7 @@ void handle_connectoin(int client_fd) {
 		if (command.empty()) continue;
 
 
-    if (Reply(command, client_fd) < 0) {
+    if (Reply(command) < 0) {
 			cerr << "Error\n";
 			continue;
 		}

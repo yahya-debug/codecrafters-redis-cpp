@@ -1,3 +1,5 @@
+#ifndef RESP_Parser_H
+#define RESP_Parser_H
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -12,6 +14,10 @@
 #define pb push_back
 using namespace std;
 typedef long long L;
+
+struct RespNode {
+  variant<string, deque<RespNode>> val;
+};
 
 class RESP_Parser {
   public:
@@ -54,13 +60,25 @@ class RESP_Parser {
   static string make_integer(const string& str) {
     return ":" + str + "\r\n";
   }
-  static string make_array(const deque<string>& arr) {
-    string ret = "*" + to_string(arr.size()) + "\r\n";
-    for (string s:arr)
-      ret += "$" + to_string(s.length()) + "\r\n" + s + "\r\n";
-    return ret;
+  static string make_array(const RespNode& arr) {
+    // 1. Try to get the node as a Vector (Array)
+    if (const auto* array_ptr = get_if<deque<RespNode>>(&arr.val)) {
+        string ret = "*" + to_string(array_ptr->size()) + "\r\n";
+        for (const auto& child : *array_ptr) {
+            ret += make_array(child); // Recurse for nested arrays
+        }
+        return ret;
+    }
+
+    // 2. Try to get the arr as a String (Bulk String)
+    if (const auto* str_ptr = get_if<string>(&arr.val)) {
+        return "$" + to_string(str_ptr->length()) + "\r\n" + *str_ptr + "\r\n";
+    }
+
+    return ""; // Fallback for empty/uninitialized variants
   }
   static string make_simple_error(const string& str) {
     return "-" + str + "\r\n";
   }
 };
+#endif

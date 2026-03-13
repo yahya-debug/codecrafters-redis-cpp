@@ -27,6 +27,7 @@ class StringCoding {
     BLPOP,
     TYPE,
     XADD,
+    XRANGE,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -42,6 +43,7 @@ class StringCoding {
     if (str == "BLPOP") return BLPOP;
     if (str == "TYPE") return TYPE;
     if (str == "XADD") return XADD;
+    if (str == "XRANGE") return XRANGE;
     return unknown;
   }
   static string command_code(const StringCodes& code) {
