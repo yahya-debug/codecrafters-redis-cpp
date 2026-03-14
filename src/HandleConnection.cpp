@@ -280,9 +280,8 @@ int Reply(int client, vector<string> input) {
 
 
 		case StringCoding::XRANGE: {
-        // 1. Basic Validation
         if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xrange"));
-        
+
         auto data = store.GET(input[1]);
         if (data.second == nullptr) {
             // Key doesn't exist: Redis returns an empty array
@@ -332,7 +331,31 @@ int Reply(int client, vector<string> input) {
         break;
     }
 
-			
+
+
+
+		case StringCoding::XREAD:
+			if (input.size() != 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xread"));
+			auto* vec = get_if<vector<Stream>>(&(store.GET(input[2]).second->val));
+			auto startIt = upper_bound(vec->begin(), vec->end(), input[3], 
+            [](const string& id, const Stream& s) { return id < s.id; });
+      if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
+			deque<RespNode> dq;
+			dq.pb(RespNode{input[2]});
+			deque<RespNode> dq1;
+			for (auto i = startIt; i < (*vec).end(); i++) {
+				deque<RespNode> first_;
+				first_.pb(RespNode{i->id});
+				for (auto [k, v]:(i->fields)) {
+					deque<RespNode> second_;
+					second_.pb(RespNode{k}), second_.pb(RespNode{v});
+					first_.pb(RespNode{second_});
+				}
+				dq1.pb(RespNode{first_});
+			}
+			dq.pb(RespNode{dq1});
+			res_arr.pb(RespNode{dq});
+			arr = true;
 
 	}
 
