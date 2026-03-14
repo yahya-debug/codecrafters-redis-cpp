@@ -336,28 +336,67 @@ int Reply(int client, vector<string> input) {
 
 		case StringCoding::XREAD:
 			if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xread"));
-			for (int loops = 2; loops < 2+(input.size()-2)/2; loops++) {
-				auto* vec = get_if<vector<Stream>>(&(store.GET(input[loops]).second->val));
-				if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
-				auto startIt = upper_bound(vec->begin(), vec->end(), input[loops+(input.size()-2)/2], 
-							[](const string& id, const Stream& s) { return id < s.id; });
-				deque<RespNode> dq;
-				dq.pb(RespNode{input[loops]});
-				deque<RespNode> dq1;
-				for (auto i = startIt; i < (*vec).end(); i++) {
-					deque<RespNode> first_;
-					first_.pb(RespNode{i->id});
-					for (auto [k, v]:(i->fields)) {
-						deque<RespNode> second_;
-						second_.pb(RespNode{k}), second_.pb(RespNode{v});
-						first_.pb(RespNode{second_});
+
+			int stream_kw = 2;
+			L timeout_ms = 0;
+			bool block = false;
+			if (input[1] == "BLOCK")
+				block = true, stream_kw = 3, timeout_ms = stoll(input[2]);
+			auto start_time = chrono::steady_clock::now();
+
+
+			while (true) {
+				for (int loops = stream_kw; loops < stream_kw+(input.size()-stream_kw)/2; loops++) {
+	
+					auto* vec = get_if<vector<Stream>>(&(store.GET(input[loops]).second->val));
+					
+					if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
+					
+					auto startIt = upper_bound(vec->begin(), vec->end(), input[loops+(input.size()-stream_kw)/2], 
+								[](const string& id, const Stream& s) { return id < s.id; });
+					
+					deque<RespNode> dq;
+					dq.pb(RespNode{input[loops]});
+					deque<RespNode> dq1;
+					
+					for (auto i = startIt; i < (*vec).end(); i++) {
+						deque<RespNode> first_;
+						first_.pb(RespNode{i->id});
+					
+						for (auto [k, v]:(i->fields)) {
+							deque<RespNode> second_;
+							second_.pb(RespNode{k}), second_.pb(RespNode{v});
+							first_.pb(RespNode{second_});
+						}
+					
+						dq1.pb(RespNode{first_});
 					}
-					dq1.pb(RespNode{first_});
+
+					dq.pb(RespNode{dq1});
+					res_arr.pb(RespNode{dq});
 				}
-				dq.pb(RespNode{dq1});
-				res_arr.pb(RespNode{dq});
+
+				if (!res_arr.empty()) {
+					arr = true;
+					break;
+				}
+
+				if (!block) {
+					null_arr = true;
+					break;
+				}
+
+				auto now = chrono::steady_clock::now();
+        auto elapsed = chrono::duration_cast<chrono::milliseconds>(now - start_time).count();
+        if (timeout_ms > 0 && elapsed >= timeout_ms) {
+            null_arr = true;
+            break;
+        }
+
+        this_thread::sleep_for(chrono::milliseconds(10));
 			}
-			arr = true;
+			break;
+
 
 	}
 
