@@ -353,10 +353,6 @@ int Reply(int client, vector<string> input) {
 
 			if (streams_kw_idx == -1) return 0; // Should not happen with valid command
 
-			int key_start = streams_kw_idx + 1;
-			int num_keys = (input.size() - key_start) / 2;
-			auto start_time = chrono::steady_clock::now();
-
 
 			if (streams_kw_idx == -1) return 0; 
 
