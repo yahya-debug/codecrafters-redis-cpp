@@ -334,47 +334,62 @@ int Reply(int client, vector<string> input) {
 
 
 
-		case StringCoding::XREAD:
+		case StringCoding::XREAD: {
 			if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xread"));
 
-			int stream_kw = 2;
+			// 1. Parse optional BLOCK
 			L timeout_ms = 0;
 			bool block = false;
-			if (input[1] == "BLOCK" || input[1] == "block")
-				block = true, stream_kw = 4, timeout_ms = stoll(input[2]);
-			auto start_time = chrono::steady_clock::now();
+			int streams_kw_idx = -1;
 
+			for (int i = 1; i < input.size(); ++i) {
+				if (input[i] == "BLOCK" || input[i] == "block")
+					block = true, timeout_ms = stoll(input[i + 1]);
+				if (input[i] == "STREAMS" || input[i] == "streams") {
+					streams_kw_idx = i;
+					break;
+				}
+			}
+
+			if (streams_kw_idx == -1) return 0; // Should not happen with valid command
+
+			int key_start = streams_kw_idx + 1;
+			int num_keys = (input.size() - key_start) / 2;
+			auto start_time = chrono::steady_clock::now();
 
 			while (true) {
 				res_arr.clear();
-				for (int loops = stream_kw; loops < stream_kw+(input.size()-stream_kw)/2; loops++) {
-	
-					auto* vec = get_if<vector<Stream>>(&(store.GET(input[loops]).second->val));
-					
-					if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
-					
-					auto startIt = upper_bound(vec->begin(), vec->end(), input[loops+(input.size()-stream_kw)/2], 
-								[](const string& id, const Stream& s) { return id < s.id; });
-					
-					deque<RespNode> dq;
-					dq.pb(RespNode{input[loops]});
-					deque<RespNode> dq1;
-					
-					for (auto i = startIt; i < (*vec).end(); i++) {
-						deque<RespNode> first_;
-						first_.pb(RespNode{i->id});
-					
-						for (auto [k, v]:(i->fields)) {
-							deque<RespNode> second_;
-							second_.pb(RespNode{k}), second_.pb(RespNode{v});
-							first_.pb(RespNode{second_});
-						}
-					
-						dq1.pb(RespNode{first_});
-					}
+				for (int i = 0; i < num_keys; i++) {
+					string current_key = input[key_start + i];
+					string current_id = input[key_start + num_keys + i];
 
-					dq.pb(RespNode{dq1});
-					res_arr.pb(RespNode{dq});
+					auto data = store.GET(current_key);
+					if (!data.second) continue;
+					auto* vec = get_if<vector<Stream>>(&(data.second->val));
+					if (!vec) continue;
+					// XREAD retrieves IDs strictly greater than the specified ID
+					auto it = upper_bound(vec->begin(), vec->end(), current_id, 
+							[](const string& id, const Stream& s) { return id < s.id; });
+
+					if (it != vec->end()) {
+						deque<RespNode> entries_dq;
+						for (; it != vec->end(); ++it) {
+							deque<RespNode> entry;
+							entry.push_back(RespNode{it->id});
+							deque<RespNode> fields_flat;
+							for (auto const& [k, v] : it->fields) {
+								fields_flat.push_back(RespNode{k});
+								fields_flat.push_back(RespNode{v});
+							}
+							entry.push_back(RespNode{fields_flat});
+							entries_dq.push_back(RespNode{entry});
+						}
+						
+						deque<RespNode> stream_dq;
+						stream_dq.push_back(RespNode{current_key});
+						stream_dq.push_back(RespNode{entries_dq});
+						res_arr.push_back(RespNode{stream_dq});
+					}
 				}
 
 				if (!res_arr.empty()) {
@@ -387,16 +402,17 @@ int Reply(int client, vector<string> input) {
 					break;
 				}
 
+				// Handle Blocking Timeout
 				auto now = chrono::steady_clock::now();
-        auto elapsed = chrono::duration_cast<chrono::milliseconds>(now - start_time).count();
-        if (timeout_ms > 0 && elapsed >= timeout_ms) {
-            null_arr = true;
-            break;
-        }
-
-        this_thread::sleep_for(chrono::milliseconds(10));
+				auto elapsed = chrono::duration_cast<chrono::milliseconds>(now - start_time).count();
+				if (timeout_ms > 0 && elapsed >= timeout_ms) {
+					null_arr = true;
+					break;
+				}
+				this_thread::sleep_for(chrono::milliseconds(10));
 			}
 			break;
+	}
 
 
 	}
