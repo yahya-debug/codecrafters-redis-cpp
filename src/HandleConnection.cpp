@@ -357,11 +357,35 @@ int Reply(int client, vector<string> input) {
 			int num_keys = (input.size() - key_start) / 2;
 			auto start_time = chrono::steady_clock::now();
 
+
+			if (streams_kw_idx == -1) return 0; 
+
+			int key_start = streams_kw_idx + 1;
+			int num_keys = (input.size() - key_start) / 2;
+
+			// 2. Resolve '$' IDs to the current top of the stream before blocking
+			vector<string> resolved_ids;
+			for (int i = 0; i < num_keys; i++) {
+				string current_id = input[key_start + num_keys + i];
+				if (current_id == "$") {
+					auto data = store.GET(input[key_start + i]);
+					if (data.second) {
+						if (auto* v = get_if<vector<Stream>>(&(data.second->val))) {
+							current_id = v->empty() ? "0-0" : v->back().id;
+						}
+					} else {
+						current_id = "0-0";
+					}
+				}
+				resolved_ids.push_back(current_id);
+			}
+
+			auto start_time = chrono::steady_clock::now();
 			while (true) {
 				res_arr.clear();
 				for (int i = 0; i < num_keys; i++) {
 					string current_key = input[key_start + i];
-					string current_id = input[key_start + num_keys + i];
+					string current_id = resolved_ids[i];
 
 					auto data = store.GET(current_key);
 					if (!data.second) continue;
