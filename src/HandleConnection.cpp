@@ -340,12 +340,13 @@ int Reply(int client, vector<string> input) {
 			int stream_kw = 2;
 			L timeout_ms = 0;
 			bool block = false;
-			if (input[1] == "BLOCK")
-				block = true, stream_kw = 3, timeout_ms = stoll(input[2]);
+			if (input[1] == "BLOCK" || input[1] == "block")
+				block = true, stream_kw = 4, timeout_ms = stoll(input[2]);
 			auto start_time = chrono::steady_clock::now();
 
 
 			while (true) {
+				res_arr.clear();
 				for (int loops = stream_kw; loops < stream_kw+(input.size()-stream_kw)/2; loops++) {
 	
 					auto* vec = get_if<vector<Stream>>(&(store.GET(input[loops]).second->val));
