@@ -29,6 +29,7 @@ class StringCoding {
     XADD,
     XRANGE,
     XREAD,
+    INCR,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -46,6 +47,7 @@ class StringCoding {
     if (str == "XADD") return XADD;
     if (str == "XRANGE") return XRANGE;
     if (str == "XREAD") return XREAD;
+    if (str == "INCR") return INCR;
     return unknown;
   }
   static string command_code(const StringCodes& code) {

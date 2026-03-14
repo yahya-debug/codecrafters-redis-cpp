@@ -432,8 +432,29 @@ int Reply(int client, vector<string> input) {
 				this_thread::sleep_for(chrono::milliseconds(10));
 			}
 			break;
-	}
+		}
 
+
+
+		case StringCoding::INCR:
+			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "incr"));
+			try {
+				pair<int, Entry*> get_result = store.GET(input[1]);
+				auto* data = get_if<string>(&get_result.second->val);
+
+				if (!get_result.first)
+					store.SET(input[1], Entry{"1", 0}), res = "1";
+				else if (data)
+					*data = to_string(stoll(*data)+1), res = *data;
+				else
+					throw exception();
+
+				num = true;
+				// if (!holds_alternative<string>(get_result.second->val))
+			} catch (const exception& e) {
+				return send_(client, RESP_Parser::make_simple_error("ERR value is not an integer or out of range"));
+			}
+			break;
 
 	}
 
