@@ -336,9 +336,9 @@ int Reply(int client, vector<string> input) {
 
 		case StringCoding::XREAD:
 			if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xread"));
-			auto* vec = get_if<vector<Stream>>(&(store.GET(input[2]).second->val));
-      if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
 			for (int loops = 2; loops < 2+(input.size()-2)/2; loops++) {
+				auto* vec = get_if<vector<Stream>>(&(store.GET(input[loops]).second->val));
+				if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
 				auto startIt = upper_bound(vec->begin(), vec->end(), input[loops+(input.size()-2)/2], 
 							[](const string& id, const Stream& s) { return id < s.id; });
 				deque<RespNode> dq;
