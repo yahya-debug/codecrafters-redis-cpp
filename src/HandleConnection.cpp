@@ -499,6 +499,17 @@ string Reply(int client, vector<string> input, User& user) {
 			break;
 		}
 
+
+
+		case StringCoding::DISCARD:
+			if (!user.getMulti()) return send_(client, RESP_Parser::make_simple_error("ERR DISCARD without MULTI"));
+			while (!multi_q.empty())
+				multi_q.pop();
+			user.setMulti(false);
+			user.setD(false);
+			res = "OK";
+			simple = true;
+			break;
 	}
 
 	if (user.getD() and user.getMulti()) {
