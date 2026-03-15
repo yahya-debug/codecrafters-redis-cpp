@@ -40,6 +40,7 @@ string Reply(int client, vector<string> input, User& user) {
 	bool num = false;
 	bool arr = false;
 	bool err = false;
+	bool err_ = false;
 	if (user.getMulti()) user.setD(true);
 
 	
@@ -53,7 +54,7 @@ string Reply(int client, vector<string> input, User& user) {
 			break;
 		// ECHO command
 		case StringCoding::ECHO:
-			if (input.size() == 1) return send_(client, Store::ERR(ERR::NUM_ARG, "echo"));
+			if (input.size() == 1) res = Store::ERR(ERR::NUM_ARG, "echo"), err_ = true;
 			res = "";
 			for (int i = 1; i < input.size(); i++)
 				res += input[i] + (i == input.size()-1 ? "":" ");
@@ -66,7 +67,7 @@ string Reply(int client, vector<string> input, User& user) {
 			if (user.getMulti()) break;
 			// Contains either 3 or 5 arguments only
 			// SET Key Value (EX/PX) (Time To Live)
-			if (input.size() < 3) return send_(client, Store::ERR(ERR::NUM_ARG, "set"));
+			if (input.size() < 3) res = Store::ERR(ERR::NUM_ARG, "set"), err_ = true;
 			else if (input.size() == 3) {
 				// by defult we use 0 to detect non-expiring data
 				store.SET(input[1], {input[2], 0});
@@ -94,7 +95,7 @@ string Reply(int client, vector<string> input, User& user) {
 		case StringCoding::GET:
 			// input should contain only 2 arguments the command and the key
 			// GET Key
-			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "get"));
+			if (input.size() != 2) res = Store::ERR(ERR::NUM_ARG, "get"), err_ = true;
 			
 			// returns bulk string
 			simple = false;
@@ -108,7 +109,7 @@ string Reply(int client, vector<string> input, User& user) {
 					if (get_output.first) {
 						if (auto* str = get_if<string>(&(get_output.second)->val))
 							res = *str;
-					} else return send_(client, Store::ERR(ERR::WRONG_T, ""));
+					} else res = Store::ERR(ERR::WRONG_T, ""), err_ = true;
 				}
 			
 			} else res = "-1", null = true;
@@ -125,7 +126,7 @@ string Reply(int client, vector<string> input, User& user) {
 			// RPUSH list_key appended_value/s
 			deque<string> input_vec;
 			string cm_name = StringCoding::command_code(StringCoding::command_string(input[0]));
-			if (input.size() < 3) return send_(client, Store::ERR(ERR::NUM_ARG, cm_name));
+			if (input.size() < 3) res = Store::ERR(ERR::NUM_ARG, cm_name), err_ = true;
 
 			if (store.find(input[1]) != store.end()) {
 
@@ -158,7 +159,7 @@ string Reply(int client, vector<string> input, User& user) {
 		case StringCoding::LRANGE: {
 			// input sould consist of 4 arguments
 			// LRANGE list_key start end
-			if (input.size() != 4) return send_(client, Store::ERR(ERR::NUM_ARG, "llrange"));
+			if (input.size() != 4) res = Store::ERR(ERR::NUM_ARG, "llrange"), err_ = true;
 			pair<int, Entry*> p = store.GET(input[1]);
 			int s, e;
 			try {
@@ -196,7 +197,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::LPOP:
 			if (user.getMulti()) break;
-			if (input.size() > 3 || input.size() < 2) return send_(client, Store::ERR(ERR::NUM_ARG, "lpop"));
+			if (input.size() > 3 || input.size() < 2) res = Store::ERR(ERR::NUM_ARG, "lpop"), err_ = true;
 			if (store.find(input[1]) == store.end()) null = true;
 			if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val))) {
 
@@ -218,7 +219,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::BLPOP: {
 			if (user.getMulti()) break;
-			if (input.size() != 3) return send_(client, Store::ERR(ERR::NUM_ARG, "blpop"));
+			if (input.size() != 3) res = Store::ERR(ERR::NUM_ARG, "blpop"), err_ = true;
 			auto start = chrono::steady_clock::now();
 			bool found = false;
 			double to;
@@ -253,7 +254,7 @@ string Reply(int client, vector<string> input, User& user) {
 		
 		case StringCoding::TYPE: {
 			if (user.getMulti()) break;
-			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "type"));
+			if (input.size() != 2) res = Store::ERR(ERR::NUM_ARG, "type"), err_ = true;
 			auto data = store.GET(input[1]);
 			if (data.second == nullptr)
 				res = "none";
@@ -273,7 +274,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::XADD: {
 			if (user.getMulti()) break;
-			if (input.size() < 5) return send_(client, Store::ERR(ERR::NUM_ARG, "xadd"));
+			if (input.size() < 5) res = Store::ERR(ERR::NUM_ARG, "xadd"), err_ = true;
 			auto* vec = get_if<vector<Stream>>(&(store.GET(input[1]).second->val));
 			if (store.find(input[1]) == store.end() || vec) {
 				vector<Stream> stream;
@@ -299,7 +300,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::XRANGE: {
 			if (user.getMulti()) break;
-        if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xrange"));
+        if (input.size() < 4) res = Store::ERR(ERR::NUM_ARG, "xrange"), err_ = true;
 
         auto data = store.GET(input[1]);
         if (data.second == nullptr) {
@@ -310,7 +311,7 @@ string Reply(int client, vector<string> input, User& user) {
 
         // Use vector<Stream> to match your XADD implementation
         auto* vec = get_if<vector<Stream>>(&(data.second->val));
-        if (!vec) return send_(client, Store::ERR(ERR::WRONG_T, "WRONGTYPE"));
+        if (!vec) res = Store::ERR(ERR::WRONG_T, "WRONGTYPE"), err_ = true;
 
         // 2. ID Normalization
         string startId = input[2];
@@ -355,7 +356,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::XREAD: {
 			if (user.getMulti()) break;
-			if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xread"));
+			if (input.size() < 4) res = Store::ERR(ERR::NUM_ARG, "xread"), err_ = true;
 
 			// 1. Parse optional BLOCK
 			L timeout_ms = 0;
@@ -458,7 +459,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::INCR: {
 			if (user.getMulti()) break;
-			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "incr"));
+			if (input.size() != 2) res = Store::ERR(ERR::NUM_ARG, "incr"), err_ = true;
 			try {
 				pair<int, Entry*> get_result = store.GET(input[1]);
 				auto* data = get_if<string>(&get_result.second->val);
@@ -473,7 +474,7 @@ string Reply(int client, vector<string> input, User& user) {
 				num = true;
 				// if (!holds_alternative<string>(get_result.second->val))
 			} catch (const exception& e) {
-				return send_(client, RESP_Parser::make_simple_error("ERR value is not an integer or out of range"));
+				res = RESP_Parser::make_simple_error("ERR value is not an integer or out of range"), err_ = true;
 			}
 			break;
 		}
@@ -528,6 +529,8 @@ string Reply(int client, vector<string> input, User& user) {
 			resp = "*-1\r\n";
 		else if (err)
 			resp = RESP_Parser::make_simple_error(res);
+		else if (err_)
+			resp = res;
 		else if (arr) {
 			cout << "H";
 			RespNode rn = {res_arr};
@@ -547,6 +550,8 @@ string Reply(int client, vector<string> input, User& user) {
 			resp = "*-1\r\n";
 		else if (err)
 			resp = RESP_Parser::make_simple_error(res);
+		else if (err_)
+			resp = res;
 		else if (arr) {
 			cout << "H";
 			RespNode rn = {res_arr};
