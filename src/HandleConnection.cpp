@@ -20,11 +20,19 @@ typedef long long L;
 
 Store store;
 
-int send_(int client, string str) {
-	return send(client, str.c_str(), str.size(), 0);
+string send_(int client, string str) {
+	send(client, str.c_str(), str.size(), 0);
+	return str;
 }
 
-int Reply(int client, vector<string> input) {
+void print_(int client, string resp) {
+	send_(client, resp);
+}
+
+bool multi = false;
+bool d = false;
+queue<vector<string>> multi_q;
+string Reply(int client, vector<string> input) {
 	string res;
 	deque<RespNode> res_arr;
 	bool simple = false; // Determine if it is a simple string response
@@ -32,7 +40,11 @@ int Reply(int client, vector<string> input) {
 	bool num = false;
 	bool arr = false;
 	bool err = false;
+	if (multi) d = true;
+
 	
+
+
 	switch (StringCoding::command_string(input[0])) {
 		// PING command
 		case StringCoding::PING:
@@ -436,7 +448,7 @@ int Reply(int client, vector<string> input) {
 
 
 
-		case StringCoding::INCR:
+		case StringCoding::INCR: {
 			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "incr"));
 			try {
 				pair<int, Entry*> get_result = store.GET(input[1]);
@@ -455,28 +467,78 @@ int Reply(int client, vector<string> input) {
 				return send_(client, RESP_Parser::make_simple_error("ERR value is not an integer or out of range"));
 			}
 			break;
+		}
+
+
+		case StringCoding::MULTI: {
+			res = "OK", simple = true, multi = true;
+			break;
+		}
+
+		case StringCoding::EXEC: {
+			if (!multi) return send_(client, RESP_Parser::make_simple_error("ERR EXEC without MULTI"));
+			multi = false;
+			string ret = "*" + to_string(multi_q.size()) + "\r\n";
+			while (!multi_q.empty()) {
+				ret += Reply(client, multi_q.front()), multi_q.pop();
+				cout << ret << endl;
+				
+			}
+			d = false;
+			return send_(client, ret);
+			// arr = true;
+			break;
+		}
 
 	}
 
+	if (d and multi) {
+		multi_q.push(input);
+		res = "QUEUED";
+		return send_(client, RESP_Parser::make_simple_string(res));
+	}
 
 
 	string resp;
-	if (null) // null string in RESP
-		resp = "$-1\r\n";
-	else if (null_arr)
-		resp = "*-1\r\n";
-	else if (err)
-		resp = RESP_Parser::make_simple_error(res);
-	else if (arr) {
-		RespNode rn = {res_arr};
-		resp = RESP_Parser::make_array(rn);
+	cout << resp << '\n';
+	if (!d) {
+		if (null) // null string in RESP
+			resp = "$-1\r\n";
+		else if (null_arr)
+			resp = "*-1\r\n";
+		else if (err)
+			resp = RESP_Parser::make_simple_error(res);
+		else if (arr) {
+			cout << "H";
+			RespNode rn = {res_arr};
+			resp = RESP_Parser::make_array(rn);
+		}
+		else if (num)
+			resp = RESP_Parser::make_integer(res);
+		else if (simple)
+			resp = RESP_Parser::make_simple_string(res);
+		else resp = RESP_Parser::make_bulk_string(res);
+		
+		print_(client, resp);
+	} else {
+		if (null) // null string in RESP
+			resp = "$-1\r\n";
+		else if (null_arr)
+			resp = "*-1\r\n";
+		else if (err)
+			resp = RESP_Parser::make_simple_error(res);
+		else if (arr) {
+			cout << "H";
+			RespNode rn = {res_arr};
+			resp = RESP_Parser::make_array(rn);
+		}
+		else if (num)
+			resp = RESP_Parser::make_integer(res);
+		else if (simple)
+			resp = RESP_Parser::make_simple_string(res);
+		else resp = RESP_Parser::make_bulk_string(res);
 	}
-	else if (num)
-		resp = RESP_Parser::make_integer(res);
-	else if (simple)
-		resp = RESP_Parser::make_simple_string(res);
-	else resp = RESP_Parser::make_bulk_string(res);
-	return send_(client, resp);
+	return resp;
 }
 
 
@@ -504,7 +566,7 @@ void handle_connectoin(int client_fd) {
 		if (command.empty()) continue;
 
 
-    if (Reply(client_fd, command) < 0) {
+    if (Reply(client_fd, command) == "") {
 			cerr << "Error\n";
 			continue;
 		}

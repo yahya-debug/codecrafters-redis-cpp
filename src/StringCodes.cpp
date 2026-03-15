@@ -30,6 +30,8 @@ class StringCoding {
     XRANGE,
     XREAD,
     INCR,
+    MULTI,
+    EXEC,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -48,6 +50,8 @@ class StringCoding {
     if (str == "XRANGE") return XRANGE;
     if (str == "XREAD") return XREAD;
     if (str == "INCR") return INCR;
+    if (str == "MULTI") return MULTI;
+    if (str == "EXEC") return EXEC;
     return unknown;
   }
   static string command_code(const StringCodes& code) {
