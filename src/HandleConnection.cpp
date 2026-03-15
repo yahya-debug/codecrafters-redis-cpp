@@ -31,7 +31,6 @@ void print_(int client, string resp) {
 }
 
 
-queue<vector<string>> multi_q;
 string Reply(int client, vector<string> input, User& user) {
 	string res;
 	deque<RespNode> res_arr;
@@ -488,9 +487,9 @@ string Reply(int client, vector<string> input, User& user) {
 		case StringCoding::EXEC: {
 			if (!user.getMulti()) return send_(client, RESP_Parser::make_simple_error("ERR EXEC without MULTI"));
 			user.setMulti(false);
-			string ret = "*" + to_string(multi_q.size()) + "\r\n";
-			while (!multi_q.empty()) {
-				ret += Reply(client, multi_q.front(), user), multi_q.pop();
+			string ret = "*" + to_string(user.multi_q.size()) + "\r\n";
+			while (!user.multi_q.empty()) {
+				ret += Reply(client, user.multi_q.front(), user), user.multi_q.pop();
 				cout << ret << endl;
 				
 			}
@@ -504,8 +503,8 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::DISCARD:
 			if (!user.getMulti()) return send_(client, RESP_Parser::make_simple_error("ERR DISCARD without MULTI"));
-			while (!multi_q.empty())
-				multi_q.pop();
+			while (!user.multi_q.empty())
+				user.multi_q.pop();
 			user.setMulti(false);
 			user.setD(false);
 			res = "OK";
@@ -514,7 +513,7 @@ string Reply(int client, vector<string> input, User& user) {
 	}
 
 	if (user.getD() and user.getMulti()) {
-		multi_q.push(input);
+		user.multi_q.push(input);
 		res = "QUEUED";
 		return send_(client, RESP_Parser::make_simple_string(res));
 	}

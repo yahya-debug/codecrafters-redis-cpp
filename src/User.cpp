@@ -21,6 +21,7 @@ class User {
   bool multi = false;
   bool d = false;
   public:
+  queue<vector<string>> multi_q;
   void setMulti(bool multi) {
     this->multi = multi;
   }
