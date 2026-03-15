@@ -363,10 +363,10 @@ string Reply(int client, vector<string> input) {
 				}
 			}
 
-			if (streams_kw_idx == -1) return 0; // Should not happen with valid command
+			if (streams_kw_idx == -1) return "0"; // Should not happen with valid command
 
 
-			if (streams_kw_idx == -1) return 0; 
+			if (streams_kw_idx == -1) return "0"; 
 
 			int key_start = streams_kw_idx + 1;
 			int num_keys = (input.size() - key_start) / 2;
