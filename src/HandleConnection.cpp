@@ -11,6 +11,7 @@
 #include "RESP_Parser.cpp"
 #include "StringCodes.cpp"
 #include "DB.cpp"
+#include "User.cpp"
 #define all(a) a.begin(), a.end()
 #define _pb pop_back
 #define pf push_front
@@ -29,10 +30,9 @@ void print_(int client, string resp) {
 	send_(client, resp);
 }
 
-bool multi = false;
-bool d = false;
+
 queue<vector<string>> multi_q;
-string Reply(int client, vector<string> input) {
+string Reply(int client, vector<string> input, User& user) {
 	string res;
 	deque<RespNode> res_arr;
 	bool simple = false; // Determine if it is a simple string response
@@ -40,7 +40,7 @@ string Reply(int client, vector<string> input) {
 	bool num = false;
 	bool arr = false;
 	bool err = false;
-	if (multi) d = true;
+	if (user.getMulti()) user.setD(true);
 
 	
 
@@ -63,6 +63,7 @@ string Reply(int client, vector<string> input) {
 
 		// SET command
 		case StringCoding::SET:
+			if (user.getMulti()) break;
 			// Contains either 3 or 5 arguments only
 			// SET Key Value (EX/PX) (Time To Live)
 			if (input.size() < 3) return send_(client, Store::ERR(ERR::NUM_ARG, "set"));
@@ -119,6 +120,7 @@ string Reply(int client, vector<string> input) {
 		// RPUSH command
 		case StringCoding::RPUSH:
 		case StringCoding::LPUSH: {
+			if (user.getMulti()) break;
 			// input should contain at least 3 arguments
 			// RPUSH list_key appended_value/s
 			deque<string> input_vec;
@@ -193,6 +195,7 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::LPOP:
+			if (user.getMulti()) break;
 			if (input.size() > 3 || input.size() < 2) return send_(client, Store::ERR(ERR::NUM_ARG, "lpop"));
 			if (store.find(input[1]) == store.end()) null = true;
 			if (auto* vec = get_if<deque<string>>(&(store.GET(input[1]).second->val))) {
@@ -214,6 +217,7 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::BLPOP: {
+			if (user.getMulti()) break;
 			if (input.size() != 3) return send_(client, Store::ERR(ERR::NUM_ARG, "blpop"));
 			auto start = chrono::steady_clock::now();
 			bool found = false;
@@ -248,6 +252,7 @@ string Reply(int client, vector<string> input) {
 
 		
 		case StringCoding::TYPE: {
+			if (user.getMulti()) break;
 			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "type"));
 			auto data = store.GET(input[1]);
 			if (data.second == nullptr)
@@ -267,6 +272,7 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::XADD: {
+			if (user.getMulti()) break;
 			if (input.size() < 5) return send_(client, Store::ERR(ERR::NUM_ARG, "xadd"));
 			auto* vec = get_if<vector<Stream>>(&(store.GET(input[1]).second->val));
 			if (store.find(input[1]) == store.end() || vec) {
@@ -292,6 +298,7 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::XRANGE: {
+			if (user.getMulti()) break;
         if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xrange"));
 
         auto data = store.GET(input[1]);
@@ -347,6 +354,7 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::XREAD: {
+			if (user.getMulti()) break;
 			if (input.size() < 4) return send_(client, Store::ERR(ERR::NUM_ARG, "xread"));
 
 			// 1. Parse optional BLOCK
@@ -449,6 +457,7 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::INCR: {
+			if (user.getMulti()) break;
 			if (input.size() != 2) return send_(client, Store::ERR(ERR::NUM_ARG, "incr"));
 			try {
 				pair<int, Entry*> get_result = store.GET(input[1]);
@@ -471,20 +480,20 @@ string Reply(int client, vector<string> input) {
 
 
 		case StringCoding::MULTI: {
-			res = "OK", simple = true, multi = true;
+			res = "OK", simple = true, user.setMulti(true);
 			break;
 		}
 
 		case StringCoding::EXEC: {
-			if (!multi) return send_(client, RESP_Parser::make_simple_error("ERR EXEC without MULTI"));
-			multi = false;
+			if (!user.getMulti()) return send_(client, RESP_Parser::make_simple_error("ERR EXEC without MULTI"));
+			user.setMulti(false);
 			string ret = "*" + to_string(multi_q.size()) + "\r\n";
 			while (!multi_q.empty()) {
-				ret += Reply(client, multi_q.front()), multi_q.pop();
+				ret += Reply(client, multi_q.front(), user), multi_q.pop();
 				cout << ret << endl;
 				
 			}
-			d = false;
+			user.setD(false);
 			return send_(client, ret);
 			// arr = true;
 			break;
@@ -492,7 +501,7 @@ string Reply(int client, vector<string> input) {
 
 	}
 
-	if (d and multi) {
+	if (user.getD() and user.getMulti()) {
 		multi_q.push(input);
 		res = "QUEUED";
 		return send_(client, RESP_Parser::make_simple_string(res));
@@ -501,7 +510,7 @@ string Reply(int client, vector<string> input) {
 
 	string resp;
 	cout << resp << '\n';
-	if (!d) {
+	if (!user.getD()) {
 		if (null) // null string in RESP
 			resp = "$-1\r\n";
 		else if (null_arr)
@@ -545,6 +554,7 @@ string Reply(int client, vector<string> input) {
 
 void handle_connectoin(int client_fd) {
   vector<char> buf(1024);
+	User user;
   while (true) {
     fill(all(buf), 0);
     // returns number of bytes, takes the data from user as a pointer in the memory and the socket we will listen to
@@ -565,8 +575,7 @@ void handle_connectoin(int client_fd) {
 		vector<string> command = RESP_Parser::parse_array(raw_input);
 		if (command.empty()) continue;
 
-
-    if (Reply(client_fd, command) == "") {
+    if (Reply(client_fd, command, user) == "") {
 			cerr << "Error\n";
 			continue;
 		}
