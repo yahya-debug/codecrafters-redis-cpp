@@ -39,12 +39,17 @@ int main(int argc, char **argv) {
   server_addr.sin_addr.s_addr = INADDR_ANY;
   server_addr.sin_port = htons(6379);
 
-  for (int i = 1; i < argc; i++)
-    if (string(argv[i]) == "--port" && i + 1 < argc)
-      server_addr.sin_port = stoi(argv[++i]);
-  
+  int port_val = 6379; // Store as local int first
+  for (int i = 1; i < argc; i++) {
+    if (string(argv[i]) == "--port" && i + 1 < argc) {
+      port_val = stoi(argv[++i]);
+    }
+  }
+  server_addr.sin_port = htons(port_val); // Use htons() here!
+
   if (bind(server_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) != 0) {
-    cerr << "Failed to bind to port " + to_string(server_addr.sin_port) + "\n";
+    // Correctly report the port in the error log
+    cerr << "Failed to bind to port " << port_val << "\n";
     return 1;
   }
   
