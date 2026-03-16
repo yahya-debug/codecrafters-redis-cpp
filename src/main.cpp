@@ -70,25 +70,20 @@ int main(int argc, char **argv) {
   struct sockaddr_in client_addr;
   int client_addr_len = sizeof(client_addr);
   cout << "Waiting for a client to connect...\n";
-
+  
   // You can use print statements as follows for debugging, they'll be visible when running tests.
   cout << "Logs from your program will appear here!\n";
 
-  // Uncomment the code below to pass the first stage
-  // 
+  User* user = nullptr;
 
   if (slave) {
-    Slave* s = new Slave(mh, mp, port_val);
+    user = new Slave(mh, mp, port_val);
     // You might want to run this in a thread if you don't want it to block startup
-    thread handshake_thread(&Slave::initiateHandshake, s);
+    thread handshake_thread(&Slave::initiateHandshake, user);
     handshake_thread.detach();
-  }
+  } else user = new Master();
 
 	while (true) {
-    User* user = nullptr;
-    if (slave)
-      user = new Slave(mh, mp, port_val);
-    else user = new Master();
 		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
 		cout << "Client connected\n";
 		if (client_fd < 0) continue;
