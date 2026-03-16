@@ -1,3 +1,5 @@
+#ifndef USER
+#define USER
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -23,8 +25,15 @@ class User {
   bool d = false;
   string role = "master";
   // L connected_slaves
-
+  
   public:
+  int ID;
+  User(string role) {
+    this->role = role;
+  }
+  User() {
+
+  }
   queue<vector<string>> multi_q;
 
   void setMulti(bool multi) {
@@ -41,14 +50,28 @@ class User {
     return this->d;
   }
 
+  
+
   string getINFO(vector<string>& input) {
     if (input[1] == "replication") {
       return "role:" + this->role;
     }
+    return "";
   }
 };
 
 
-// class Master : public User {
+class Master : public User {
+  public:
+  Master() : User("master") {
 
-// };
+  }
+};
+class Slave : public User {
+  public:
+  Slave() : User("slave") {
+
+  }
+};
+
+#endif

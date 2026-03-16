@@ -515,7 +515,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 		case StringCoding::INFO:
 			res = user.getINFO(input);
-
+			break;
 			
 	}
 
@@ -527,7 +527,6 @@ string Reply(int client, vector<string> input, User& user) {
 
 
 	string resp;
-	cout << resp << '\n';
 	if (!user.getD()) {
 		if (null) // null string in RESP
 			resp = "$-1\r\n";
@@ -546,7 +545,7 @@ string Reply(int client, vector<string> input, User& user) {
 			resp = RESP_Parser::make_integer(res);
 		else if (simple)
 			resp = RESP_Parser::make_simple_string(res);
-		else resp = RESP_Parser::make_bulk_string(res);
+		else resp = RESP_Parser::make_bulk_string(res), cout << resp;
 		
 		print_(client, resp);
 	} else {
@@ -574,13 +573,13 @@ string Reply(int client, vector<string> input, User& user) {
 
 
 
-void handle_connectoin(int client_fd) {
+void handle_connectoin(User* user) {
   vector<char> buf(1024);
-	User user;
+	// User user;
   while (true) {
     fill(all(buf), 0);
     // returns number of bytes, takes the data from user as a pointer in the memory and the socket we will listen to
-    size_t bytes_rcv = recv(client_fd, buf.data(), buf.size(), 0);
+    size_t bytes_rcv = recv(user->ID, buf.data(), buf.size(), 0);
 
     // if -1 then it is an error
     if (bytes_rcv < 0) {
@@ -589,7 +588,7 @@ void handle_connectoin(int client_fd) {
     }
     // if 0 then only this socket will be diconnected
     if (bytes_rcv == 0) {
-      cout << "Client disconnected on socket " << client_fd << endl;
+      cout << "Client disconnected on socket " << user->ID << endl;
       break; // This is the crucial part!
     }
     // else: send the response
@@ -597,11 +596,11 @@ void handle_connectoin(int client_fd) {
 		vector<string> command = RESP_Parser::parse_array(raw_input);
 		if (command.empty()) continue;
 
-    if (Reply(client_fd, command, user) == "") {
+    if (Reply(user->ID, command, *user) == "") {
 			cerr << "Error\n";
 			continue;
 		}
   }
-  close(client_fd);
+  close(user->ID);
 }
 

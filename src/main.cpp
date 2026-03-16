@@ -10,10 +10,11 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <bits/stdc++.h>
+#include "User.cpp"
 using namespace std;
 typedef long long L;
 
-void handle_connectoin(int client_fd);
+void handle_connectoin(User* user);
 
 int main(int argc, char **argv) {
   // Flush after every cout / cerr
@@ -38,11 +39,14 @@ int main(int argc, char **argv) {
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = INADDR_ANY;
   server_addr.sin_port = htons(6379);
-
   int port_val = 6379; // Store as local int first
+  bool slave = false;
   for (int i = 1; i < argc; i++) {
     if (string(argv[i]) == "--port" && i + 1 < argc) {
       port_val = stoi(argv[++i]);
+    }
+    if (string(argv[i]) == "--replicaof") {
+      slave = true;
     }
   }
   server_addr.sin_port = htons(port_val); // Use htons() here!
@@ -69,10 +73,14 @@ int main(int argc, char **argv) {
   // Uncomment the code below to pass the first stage
   // 
 	while (true) {
+    User* user = new User();
+    if (slave)
+      user = new Slave();
 		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
 		cout << "Client connected\n";
 		if (client_fd < 0) continue;
-		thread t(handle_connectoin, client_fd);
+    user->ID = client_fd;
+		thread t(handle_connectoin, user);
 		t.detach();
 	}
 	close(server_fd);
