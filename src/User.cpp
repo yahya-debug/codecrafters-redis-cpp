@@ -113,7 +113,7 @@ class Slave : public User {
     }
 
     char buffer[1024];
-
+    memset(buffer, 0, sizeof(buffer));
     // Stage 1: PING
     string ping_cmd = "*1\r\n$4\r\nPING\r\n";
     send(master_fd, ping_cmd.c_str(), ping_cmd.size(), 0);
@@ -127,9 +127,12 @@ class Slave : public User {
     recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
 
     // Stage 3: REPLCONF capa psync2
-    string conf_capa = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
-    send(master_fd, conf_capa.c_str(), conf_capa.size(), 0);
-    recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
+    // Stage 3: Send PSYNC ? -1
+    string psync_cmd = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+    send(master_fd, psync_cmd.c_str(), psync_cmd.size(), 0);
+
+    memset(buffer, 0, sizeof(buffer));
+    recv(master_fd, buffer, sizeof(buffer), 0); // Master will send +FULLRESYNC
     
   }
 
