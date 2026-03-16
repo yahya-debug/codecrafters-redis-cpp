@@ -525,16 +525,34 @@ string Reply(int client, vector<string> input, User& user) {
 			break;
 
 		case StringCoding::PSYNC: {
-			// We need the Master's ID and Offset. 
-			// Ensure you cast 'user' correctly to access Master-specific methods.
 			Master* m = dynamic_cast<Master*>(&user);
 			if (m) {
-				// Format: +FULLRESYNC <REPL_ID> <OFFSET>\r\n
-				res = "FULLRESYNC " + m->getMaster_replid() + " " + to_string(m->getMaster_repl_offset());
-				simple = true; // This ensures your RESP_Parser uses '+' for a simple string
+        // 1. Send the status: +FULLRESYNC <REPL_ID> <OFFSET>\r\n
+        string full_resync = "+FULLRESYNC " + m->getMaster_replid() + " 0\r\n";
+        send(client, full_resync.c_str(), full_resync.size(), 0);
+
+        // 2. Send the "Empty" RDB File
+        // This is a minimal valid Redis RDB file represented in hex
+        string rdb_hex = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000ff10aa325101369513";
+        
+        // Convert hex to actual bytes
+        string rdb_content = "";
+        for (size_t i = 0; i < rdb_hex.length(); i += 2) {
+            string byteString = rdb_hex.substr(i, 2);
+            char byte = (char) strtol(byteString.c_str(), NULL, 16);
+            rdb_content += byte;
+        }
+
+        // Send as a Bulk String: $<length>\r\n<content>
+        // Note: Unlike standard Bulk Strings, the RDB transfer does NOT end with \r\n
+        string rdb_header = "$" + to_string(rdb_content.size()) + "\r\n";
+        send(client, rdb_header.c_str(), rdb_header.size(), 0);
+        send(client, rdb_content.c_str(), rdb_content.size(), 0);
+
+        return ""; // Return empty to prevent duplicate sends from the bottom of Reply()
 			}
 			break;
-	}
+		}
 	}
 
 	if (user.getD() and user.getMulti()) {
