@@ -93,10 +93,35 @@ class Master : public User {
   }
 };
 class Slave : public User {
-  public:
-  Slave() : User("slave") {
+  private:
+  string master_host;
+  int master_port;
 
+  public:
+  Slave(string host, int port) : User("slave"), master_host(host), master_port(port) {}
+
+  void initiateHandshake() {
+      // 1. Create a socket to the master
+    int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+    
+    struct sockaddr_in master_addr;
+    master_addr.sin_family = AF_INET;
+    master_addr.sin_port = htons(master_port);
+    inet_pton(AF_INET, master_host.c_str(), &master_addr.sin_addr);
+
+    if (connect(master_fd, (struct sockaddr*)&master_addr, sizeof(master_addr)) < 0) {
+        cerr << "Failed to connect to master" << endl;
+        return;
+    }
+
+    // 2. Send PING as a RESP Array: *1\r\n$4\r\nPING\r\n
+    string ping_cmd = "*1\r\n$4\r\nPING\r\n";
+    send(master_fd, ping_cmd.c_str(), ping_cmd.size(), 0);
+    
+    // Note: In later stages, you'll need to read the "+PONG" response here
   }
+
+
   string getINFO(vector<string>& input) override {
     cout << "d";
     string res;

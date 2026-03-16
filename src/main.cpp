@@ -41,12 +41,16 @@ int main(int argc, char **argv) {
   server_addr.sin_port = htons(6379);
   int port_val = 6379; // Store as local int first
   bool slave = false;
+
+  string mh; int mp;
   for (int i = 1; i < argc; i++) {
     if (string(argv[i]) == "--port" && i + 1 < argc) {
       port_val = stoi(argv[++i]);
     }
     if (string(argv[i]) == "--replicaof") {
       slave = true;
+      if (i+2 < argc)
+        mh = argv[i+1], mp = stoi(argv[i+2]);
     }
   }
   server_addr.sin_port = htons(port_val); // Use htons() here!
@@ -72,10 +76,18 @@ int main(int argc, char **argv) {
 
   // Uncomment the code below to pass the first stage
   // 
+
+  if (slave) {
+    Slave* s = new Slave(mh, mp);
+    // You might want to run this in a thread if you don't want it to block startup
+    thread handshake_thread(&Slave::initiateHandshake, s);
+    handshake_thread.detach();
+  }
+
 	while (true) {
     User* user = nullptr;
     if (slave)
-      user = new Slave();
+      user = new Slave(mh, mp);
     else user = new Master();
 		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
 		cout << "Client connected\n";
