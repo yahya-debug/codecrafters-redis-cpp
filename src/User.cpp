@@ -17,21 +17,38 @@ typedef long long L;
 
 
 class User {
+
   private:
   bool multi = false;
   bool d = false;
+  string role = "master";
+  // L connected_slaves
+
   public:
   queue<vector<string>> multi_q;
+
   void setMulti(bool multi) {
     this->multi = multi;
   }
   bool getMulti() {
     return this->multi;
   }
+
   void setD(bool d) {
     this->d = d;
   }
   bool getD() {
     return this->d;
   }
+
+  string getINFO(vector<string>& input) {
+    if (input[1] == "replication") {
+      return "role:" + this->role;
+    }
+  }
 };
+
+
+// class Master : public User {
+
+// };

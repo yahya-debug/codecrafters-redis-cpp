@@ -33,6 +33,7 @@ class StringCoding {
     MULTI,
     EXEC,
     DISCARD,
+    INFO,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -54,6 +55,7 @@ class StringCoding {
     if (str == "MULTI") return MULTI;
     if (str == "EXEC") return EXEC;
     if (str == "DISCARD") return DISCARD;
+    if (str == "INFO") return INFO;
     return unknown;
   }
   static string command_code(const StringCodes& code) {
