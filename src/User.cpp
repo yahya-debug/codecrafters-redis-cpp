@@ -126,13 +126,20 @@ class Slave : public User {
     send(master_fd, conf_port.c_str(), conf_port.size(), 0);
     recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
 
-    // Stage 3: REPLCONF capa psync2
     // Stage 3: Send PSYNC ? -1
     string psync_cmd = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
     send(master_fd, psync_cmd.c_str(), psync_cmd.size(), 0);
 
+    // Read Master's response to keep the buffers clean
+    char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
-    recv(master_fd, buffer, sizeof(buffer), 0); // Master will send +FULLRESYNC
+    
+    // Receive +FULLRESYNC
+    recv(master_fd, buffer, sizeof(buffer), 0);
+    
+    // Receive RDB File (or at least wait for it)
+    memset(buffer, 0, sizeof(buffer));
+    recv(master_fd, buffer, sizeof(buffer), 0);
     
   }
 
