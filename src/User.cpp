@@ -101,6 +101,8 @@ class Slave : public User {
   Slave(string host, int port, int l_port) : User("slave"), master_host(host), master_port(port), listening_port(l_port) {}
 
   void initiateHandshake() {
+    if (master_host == "localhost")
+      master_host = "127.0.0.1";
     int master_fd = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in master_addr;
     master_addr.sin_family = AF_INET;
