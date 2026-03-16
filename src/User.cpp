@@ -95,15 +95,13 @@ class Master : public User {
 class Slave : public User {
   private:
   string master_host;
-  int master_port;
+  int master_port, listening_port;
 
   public:
-  Slave(string host, int port) : User("slave"), master_host(host), master_port(port) {}
+  Slave(string host, int port, int l_port) : User("slave"), master_host(host), master_port(port), listening_port(l_port) {}
 
   void initiateHandshake() {
-      // 1. Create a socket to the master
     int master_fd = socket(AF_INET, SOCK_STREAM, 0);
-    
     struct sockaddr_in master_addr;
     master_addr.sin_family = AF_INET;
     master_addr.sin_port = htons(master_port);
@@ -114,11 +112,26 @@ class Slave : public User {
         return;
     }
 
-    // 2. Send PING as a RESP Array: *1\r\n$4\r\nPING\r\n
+    char buffer[1024];
+
+    // Stage 1: PING
     string ping_cmd = "*1\r\n$4\r\nPING\r\n";
     send(master_fd, ping_cmd.c_str(), ping_cmd.size(), 0);
+    recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +PONG
+
+    // Stage 2: REPLCONF listening-port
+    string port_s = to_string(listening_port);
+    string conf_port = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$" 
+                       + to_string(port_s.length()) + "\r\n" + port_s + "\r\n";
+    send(master_fd, conf_port.c_str(), conf_port.size(), 0);
+    recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
+
+    // Stage 3: REPLCONF capa psync2
+    string conf_capa = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+    send(master_fd, conf_capa.c_str(), conf_capa.size(), 0);
+    recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
+
     
-    // Note: In later stages, you'll need to read the "+PONG" response here
   }
 
 

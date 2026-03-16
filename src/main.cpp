@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
   // 
 
   if (slave) {
-    Slave* s = new Slave(mh, mp);
+    Slave* s = new Slave(mh, mp, port_val);
     // You might want to run this in a thread if you don't want it to block startup
     thread handshake_thread(&Slave::initiateHandshake, s);
     handshake_thread.detach();
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 	while (true) {
     User* user = nullptr;
     if (slave)
-      user = new Slave(mh, mp);
+      user = new Slave(mh, mp, port_val);
     else user = new Master();
 		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
 		cout << "Client connected\n";
