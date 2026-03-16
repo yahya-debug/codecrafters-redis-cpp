@@ -517,6 +517,12 @@ string Reply(int client, vector<string> input, User& user) {
 			res = user.getINFO(input);
 			break;
 			
+
+
+		case StringCoding::REPLCONF:
+			res = "OK";
+			simple = true;
+			break;
 	}
 
 	if (user.getD() and user.getMulti()) {

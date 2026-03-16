@@ -34,6 +34,7 @@ class StringCoding {
     EXEC,
     DISCARD,
     INFO,
+    REPLCONF,
     unknown
   };
   static StringCodes command_string(const string& str) {
@@ -56,6 +57,7 @@ class StringCoding {
     if (str == "EXEC") return EXEC;
     if (str == "DISCARD") return DISCARD;
     if (str == "INFO") return INFO;
+    if (str == "REPLCONF") return REPLCONF;
     return unknown;
   }
   static string command_code(const StringCodes& code) {
