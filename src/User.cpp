@@ -131,7 +131,7 @@ class Slave : public User {
     send(master_fd, psync_cmd.c_str(), psync_cmd.size(), 0);
 
     // Read Master's response to keep the buffers clean
-    char buffer[1024];
+    // char buffer[1024];
     memset(buffer, 0, sizeof(buffer));
     
     // Receive +FULLRESYNC
