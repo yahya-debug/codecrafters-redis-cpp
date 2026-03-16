@@ -97,6 +97,16 @@ class Slave : public User {
   Slave() : User("slave") {
 
   }
+  string getINFO(vector<string>& input) override {
+    cout << "d";
+    string res;
+    if (input[1] == "replication") {
+      res = "role:" + this->getRole() + "\r\n";
+          // + "master_replid:" + this->getMaster_replid() + "\r\n"
+          // + "master_repl_offset:" + to_string(this->getMaster_repl_offset());
+    }
+    return res;
+  }
 };
 
 #endif
