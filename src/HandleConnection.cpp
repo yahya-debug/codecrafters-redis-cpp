@@ -640,3 +640,16 @@ void handle_connectoin(User* user) {
   close(user->ID);
 }
 
+User* user = nullptr;
+if (slave) {
+    user = new Slave(mh, mp, port_val);  // One object
+    ...
+} else user = new Master();  // One object
+
+while (true) {
+    int client_fd = accept(server_fd, ...);
+    user->ID = client_fd;  // Overwriting ID for shared object!
+    thread t(handle_connectoin, user);  // All threads share same object!
+    t.detach();
+}
+
