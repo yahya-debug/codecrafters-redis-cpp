@@ -523,6 +523,18 @@ string Reply(int client, vector<string> input, User& user) {
 			res = "OK";
 			simple = true;
 			break;
+
+		case StringCoding::PSYNC: {
+			// We need the Master's ID and Offset. 
+			// Ensure you cast 'user' correctly to access Master-specific methods.
+			Master* m = dynamic_cast<Master*>(&user);
+			if (m) {
+				// Format: +FULLRESYNC <REPL_ID> <OFFSET>\r\n
+				res = "FULLRESYNC " + m->getMaster_replid() + " " + to_string(m->getMaster_repl_offset());
+				simple = true; // This ensures your RESP_Parser uses '+' for a simple string
+			}
+			break;
+	}
 	}
 
 	if (user.getD() and user.getMulti()) {
