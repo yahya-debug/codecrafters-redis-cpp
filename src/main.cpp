@@ -49,8 +49,8 @@ int main(int argc, char **argv) {
     }
     if (string(argv[i]) == "--replicaof") {
       slave = true;
-      if (i+2 < argc)
-        mh = argv[i+1], mp = stoi(argv[i+2]);
+      if (i+1 < argc)
+        mh = Yahya::split(argv[i+1], " ")[0], mp = stoi(Yahya::split(argv[i+1], " ")[1]);
     }
   }
   server_addr.sin_port = htons(port_val); // Use htons() here!
