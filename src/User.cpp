@@ -124,10 +124,11 @@ class Slave : public User {
     string conf_port = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$" 
                        + to_string(port_s.length()) + "\r\n" + port_s + "\r\n";
     send(master_fd, conf_port.c_str(), conf_port.size(), 0);
-    recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
+    memset(buffer, 0, sizeof(buffer));
+    recv(master_fd, buffer, sizeof(buffer), 0);
 
     // Stage 3: Send PSYNC ? -1
-    string psync_cmd = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+    string psync_cmd = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
     send(master_fd, psync_cmd.c_str(), psync_cmd.size(), 0);
 
     // Read Master's response to keep the buffers clean
