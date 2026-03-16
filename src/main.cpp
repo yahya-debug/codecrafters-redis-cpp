@@ -73,9 +73,10 @@ int main(int argc, char **argv) {
   // Uncomment the code below to pass the first stage
   // 
 	while (true) {
-    User* user = new User();
+    User* user = nullptr;
     if (slave)
       user = new Slave();
+    else user = new Master();
 		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
 		cout << "Client connected\n";
 		if (client_fd < 0) continue;
