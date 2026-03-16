@@ -130,7 +130,6 @@ class Slave : public User {
     string conf_capa = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
     send(master_fd, conf_capa.c_str(), conf_capa.size(), 0);
     recv(master_fd, buffer, sizeof(buffer), 0); // Wait for +OK
-
     
   }
 
