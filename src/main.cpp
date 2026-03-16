@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   if (slave) {
     user = new Slave(mh, mp, port_val);
     // You might want to run this in a thread if you don't want it to block startup
-    thread handshake_thread(&Slave::initiateHandshake, user);
+    thread handshake_thread(&Slave::initiateHandshake, (Slave*)user);
     handshake_thread.detach();
   } else user = new Master();
 
