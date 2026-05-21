@@ -67,6 +67,7 @@ class Master : public User {
   private:
   string master_replid;
   int master_repl_offset;
+  vector<int> replicas;
 
   public:
   Master() : User("master") {
@@ -79,6 +80,13 @@ class Master : public User {
   }
   int getMaster_repl_offset() {
     return this->master_repl_offset;
+  }
+
+  void registerReplica(int fd) {
+    this->replicas.push_back(fd);
+  }
+  vector<int> getReplicas() {
+    return replicas;
   }
 
   string getINFO(vector<string>& input) override {

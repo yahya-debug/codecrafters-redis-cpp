@@ -74,8 +74,13 @@ class Stream {
 
 struct Entry {
   variant<string, deque<string>, unordered_set<string>, unordered_map<string, string>, vector<Stream>> val;
-	L exp;
+	L exp; // -1 for no exp, else epoch time in ms
 };
+
+
+
+
+
 enum class ERR {
   NUM_ARG,
   WRONG_T

@@ -17,7 +17,7 @@ class StringCoding {
   enum StringCodes {
     PING,
     ECHO,
-    SET,
+    SET,  
     GET,
     RPUSH,
     LPUSH,
