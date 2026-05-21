@@ -90,6 +90,7 @@ string Reply(int client, vector<string> input, User& user) {
 				store.SET(input[1], {input[2], 0});
 				res = "OK";
 				simple = true;
+				propagate_to_replica(input, user);
 			} else if (input.size() == 5) {
 				L ttl;
 				switch (ExpCode::Exp_Ext(input[3])) {
@@ -659,9 +660,9 @@ void handle_connectoin(User* user, int client_fd) {
     if (user->getRole() == "slave") {
         // Run Reply to alter data states, but intercept/discard output strings 
         // because replicas do not respond to masters during stream processing!
-        Reply(user->ID, command, *user); 
+        Reply(client_fd, command, *user); 
     } else {
-        if (Reply(user->ID, command, *user) == "") {
+        if (Reply(client_fd, command, *user) == "") {
             cerr << "Error\n";
             continue;
         }
