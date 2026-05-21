@@ -572,7 +572,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 				m->registerReplica(client);
 
-        return ""; // Return empty to prevent duplicate sends from the bottom of Reply()
+        return "PSYNC_PROCESSED"; // Return empty to prevent duplicate sends from the bottom of Reply()
 			}
 			break;
 		}
@@ -606,7 +606,7 @@ string Reply(int client, vector<string> input, User& user) {
 			resp = RESP_Parser::make_simple_string(res);
 		else resp = RESP_Parser::make_bulk_string(res), cout << resp;
 		
-		print_(client, resp);
+		if (!user.getNoReply()) print_(client, resp);
 	} else {
 		if (null) // null string in RESP
 			resp = "$-1\r\n";
@@ -691,6 +691,7 @@ void run_slave(string mh, int mp, int lp) {
 	// Process propagated commands using the existing Reply()
 	User slave_user("slave");
 	slave_user.ID = master_fd;
+	slave_user.setNoReply(true);
 	while (true) {
 		auto [cmd, consumed] = RESP_Parser::parse_array_with_len(rbuf);
 		if (consumed > 0) {

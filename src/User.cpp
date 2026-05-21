@@ -24,6 +24,7 @@ class User {
   private:
   bool multi = false;
   bool d = false;
+  bool no_reply = false;
   string role = "master";
   // L connected_slaves
   
@@ -54,6 +55,9 @@ class User {
   bool getD() {
     return this->d;
   }
+
+  void setNoReply(bool v) { no_reply = v; }
+  bool getNoReply() { return no_reply; }
 
   
 
