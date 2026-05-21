@@ -633,7 +633,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 
 void handle_connectoin(User* user) {
-  vector<char> buf(1024);
+  vector<char> buf(4096);
 	// User user;
   while (true) {
     fill(all(buf), 0);
