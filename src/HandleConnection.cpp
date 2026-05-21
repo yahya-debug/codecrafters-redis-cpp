@@ -668,6 +668,6 @@ void handle_connectoin(User* user, int client_fd) {
         }
     }
   }
-  close(user->ID);
+  close(client_fd);
 }
 

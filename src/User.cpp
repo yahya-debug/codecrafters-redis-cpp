@@ -85,7 +85,7 @@ class Master : public User {
   void registerReplica(int fd) {
     this->replicas.push_back(fd);
   }
-  vector<int> getReplicas() {
+  vector<int>& getReplicas() {
     return replicas;
   }
 
