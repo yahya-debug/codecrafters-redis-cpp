@@ -58,7 +58,10 @@ class User {
   
 
   virtual string getINFO(vector<string>& input) {
-    return "";
+    string res;
+    if (input.size() > 1 && input[1] == "replication")
+      res = "role:" + this->role + "\r\n";
+    return res;
   }
 };
 
