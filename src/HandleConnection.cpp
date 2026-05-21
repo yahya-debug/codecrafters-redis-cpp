@@ -692,6 +692,7 @@ void run_slave(string mh, int mp, int lp) {
 	User slave_user("slave");
 	slave_user.ID = master_fd;
 	slave_user.setNoReply(true);
+	size_t repl_offset = 0;
 	while (true) {
 		auto [cmd, consumed] = RESP_Parser::parse_array_with_len(rbuf);
 		if (consumed > 0) {
@@ -702,8 +703,10 @@ void run_slave(string mh, int mp, int lp) {
 				for (auto& c : c0) c = toupper(c);
 				for (auto& c : c1) c = toupper(c);
 				if (c0 == "REPLCONF" && c1 == "GETACK") {
+					string offset_s = to_string(repl_offset);
 					string ack = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n";
 					send(master_fd, ack.c_str(), ack.size(), 0);
+					repl_offset += consumed;   // count THIS command after responding
 					continue;
 				}
 			}
