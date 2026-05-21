@@ -86,10 +86,10 @@ string Reply(int client, vector<string> input, User& user) {
 			// SET Key Value (EX/PX) (Time To Live)
 			if (input.size() < 3) res = Store::ERR(ERR::NUM_ARG, "set"), err_ = true;
 			else if (input.size() == 3) {
-				// by defult we use 0 to detect non-expiring data
 				store.SET(input[1], {input[2], 0});
 				res = "OK";
 				simple = true;
+				propagate_to_replica(input, user);
 			} else if (input.size() == 5) {
 				L ttl;
 				switch (ExpCode::Exp_Ext(input[3])) {
@@ -631,6 +631,77 @@ string Reply(int client, vector<string> input, User& user) {
 }
 
 
+
+void run_slave(string mh, int mp, int lp) {
+	if (mh == "localhost") mh = "127.0.0.1";
+
+	int master_fd = socket(AF_INET, SOCK_STREAM, 0);
+	struct sockaddr_in master_addr;
+	master_addr.sin_family = AF_INET;
+	master_addr.sin_port = htons(mp);
+	inet_pton(AF_INET, mh.c_str(), &master_addr.sin_addr);
+
+	if (connect(master_fd, (struct sockaddr*)&master_addr, sizeof(master_addr)) < 0) {
+		cerr << "Failed to connect to master\n";
+		return;
+	}
+
+	// Buffered line reader
+	string rbuf;
+	auto refill = [&]() -> bool {
+		char tmp[4096];
+		int n = recv(master_fd, tmp, sizeof(tmp), 0);
+		if (n <= 0) return false;
+		rbuf += string(tmp, n);
+		return true;
+	};
+	auto read_line = [&]() {
+		while (rbuf.find("\r\n") == string::npos) refill();
+		size_t pos = rbuf.find("\r\n");
+		string line = rbuf.substr(0, pos);
+		rbuf = rbuf.substr(pos + 2);
+		return line;
+	};
+
+	// Handshake
+	string ping = "*1\r\n$4\r\nPING\r\n";
+	send(master_fd, ping.c_str(), ping.size(), 0);
+	read_line(); // +PONG
+
+	string lp_s = to_string(lp);
+	string conf = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$"
+	              + to_string(lp_s.size()) + "\r\n" + lp_s + "\r\n";
+	send(master_fd, conf.c_str(), conf.size(), 0);
+	read_line(); // +OK
+
+	string capa = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+	send(master_fd, capa.c_str(), capa.size(), 0);
+	read_line(); // +OK
+
+	string psync = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+	send(master_fd, psync.c_str(), psync.size(), 0);
+	read_line(); // +FULLRESYNC <id> 0
+
+	// Consume RDB: $<n>\r\n<n bytes>
+	string rdb_hdr = read_line(); // e.g. "$88"
+	int rdb_len = stoi(rdb_hdr.substr(1));
+	while ((int)rbuf.size() < rdb_len) refill();
+	rbuf = rbuf.substr(rdb_len);
+
+	// Process propagated commands using the existing Reply()
+	User slave_user("slave");
+	slave_user.ID = master_fd;
+	while (true) {
+		auto [cmd, consumed] = RESP_Parser::parse_array_with_len(rbuf);
+		if (consumed > 0) {
+			rbuf = rbuf.substr(consumed);
+			Reply(master_fd, cmd, slave_user);
+		} else {
+			if (!refill()) break;
+		}
+	}
+	close(master_fd);
+}
 
 void handle_connectoin(User* user) {
   vector<char> buf(4096);

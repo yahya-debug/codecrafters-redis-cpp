@@ -80,5 +80,27 @@ class RESP_Parser {
   static string make_simple_error(const string& str) {
     return "-" + str + "\r\n";
   }
+
+  // Returns {parsed_args, bytes_consumed}. consumed==0 means incomplete input.
+  static pair<vector<string>, size_t> parse_array_with_len(const string& inp) {
+    vector<string> args;
+    if (inp.empty() || inp[0] != '*') return {args, 0};
+    size_t pos = 0;
+    size_t next_rn = inp.find("\r\n", pos);
+    if (next_rn == string::npos) return {args, 0};
+    int num = stoi(inp.substr(pos + 1, next_rn - (pos + 1)));
+    pos = next_rn + 2;
+    for (int i = 0; i < num; i++) {
+      if (pos >= inp.size() || inp[pos] != '$') return {args, 0};
+      next_rn = inp.find("\r\n", pos);
+      if (next_rn == string::npos) return {args, 0};
+      int len = stoi(inp.substr(pos + 1, next_rn - (pos + 1)));
+      pos = next_rn + 2;
+      if (pos + (size_t)len + 2 > inp.size()) return {args, 0};
+      args.push_back(inp.substr(pos, len));
+      pos += len + 2;
+    }
+    return {args, pos};
+  }
 };
 #endif

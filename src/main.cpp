@@ -15,6 +15,7 @@ using namespace std;
 typedef long long L;
 
 void handle_connectoin(User* user);
+void run_slave(string mh, int mp, int lp);
 
 int main(int argc, char **argv) {
   // Flush after every cout / cerr
@@ -75,18 +76,14 @@ int main(int argc, char **argv) {
   cout << "Logs from your program will appear here!\n";
 
   
+  if (slave)
+    thread(run_slave, mh, mp, port_val).detach();
+
 	while (true) {
-    User* user = nullptr;
-  
-    if (slave) {
-      user = new Slave(mh, mp, port_val);
-      // You might want to run this in a thread if you don't want it to block startup
-      thread handshake_thread(&Slave::initiateHandshake, (Slave*)user);
-      handshake_thread.detach();
-    } else user = new Master();
 		int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
 		cout << "Client connected\n";
 		if (client_fd < 0) continue;
+    User* user = slave ? (User*)new User("slave") : (User*)new Master();
     user->ID = client_fd;
 		thread t(handle_connectoin, user);
 		t.detach();

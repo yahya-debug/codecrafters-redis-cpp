@@ -67,7 +67,7 @@ class Master : public User {
   private:
   string master_replid;
   int master_repl_offset;
-  vector<int> replicas;
+  inline static vector<int> replicas;
 
   public:
   Master() : User("master") {
