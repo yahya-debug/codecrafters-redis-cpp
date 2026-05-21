@@ -632,13 +632,13 @@ string Reply(int client, vector<string> input, User& user) {
 
 
 
-void handle_connectoin(User* user) {
+void handle_connectoin(User* user, int client_fd) {
   vector<char> buf(4096);
 	// User user;
   while (true) {
     fill(all(buf), 0);
     // returns number of bytes, takes the data from user as a pointer in the memory and the socket we will listen to
-    size_t bytes_rcv = recv(user->ID, buf.data(), buf.size(), 0);
+    size_t bytes_rcv = recv(client_fd, buf.data(), buf.size(), 0);
 
     // if -1 then it is an error
     if (bytes_rcv < 0) {
@@ -647,7 +647,7 @@ void handle_connectoin(User* user) {
     }
     // if 0 then only this socket will be diconnected
     if (bytes_rcv == 0) {
-      cout << "Client disconnected on socket " << user->ID << endl;
+      cout << "Client disconnected on socket " << client_fd << endl;
       break; // This is the crucial part!
     }
     // else: send the response
