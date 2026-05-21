@@ -23,7 +23,7 @@ Store store;
 
 void propagate_to_replica(const vector<string>& command, User& user) {
 	Master* m = dynamic_cast<Master*>(&user);
-	if (!m or m->getReplicas().empty()) return;
+	if (!m || m->getReplicas().empty()) return;
 
 	// command to RESP array
 	RespNode root;
