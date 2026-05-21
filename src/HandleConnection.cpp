@@ -21,24 +21,6 @@ typedef long long L;
 
 Store store;
 
-void propagate_to_replica(const vector<string>& command, User& user) {
-	Master* m = dynamic_cast<Master*>(&user);
-	if (!m || m->getReplicas().empty()) return;
-
-	// command to RESP array
-	RespNode root;
-	deque<RespNode> cmd_nodes;
-	for (const auto& arg:command)
-		cmd_nodes.push_back(RespNode{arg});
-
-	root.val = cmd_nodes;
-	string resp_cmd = RESP_Parser::make_array(root);
-
-	// send to repolicas tracked by this master
-	for (int replica:m->getReplicas())
-		send(replica, resp_cmd.c_str(), resp_cmd.size(), 0);
-}
-
 string send_(int client, string str) {
 	send(client, str.c_str(), str.size(), 0);
 	return str;
@@ -90,7 +72,6 @@ string Reply(int client, vector<string> input, User& user) {
 				store.SET(input[1], {input[2], 0});
 				res = "OK";
 				simple = true;
-				propagate_to_replica(input, user);
 			} else if (input.size() == 5) {
 				L ttl;
 				switch (ExpCode::Exp_Ext(input[3])) {
@@ -104,7 +85,6 @@ string Reply(int client, vector<string> input, User& user) {
 				}
 				res = "OK", simple = true;
 				store.SET(input[1], {input[2], Store::get_time()+ttl});
-				propagate_to_replica(input, user);
 			} else cerr << "ERR syntax error\n";
 			break;
 		
@@ -571,8 +551,6 @@ string Reply(int client, vector<string> input, User& user) {
         send(client, rdb_header.c_str(), rdb_header.size(), 0);
         send(client, rdb_content.c_str(), rdb_content.size(), 0);
 
-				m->registerReplica(client);
-
         return ""; // Return empty to prevent duplicate sends from the bottom of Reply()
 			}
 			break;
@@ -633,13 +611,13 @@ string Reply(int client, vector<string> input, User& user) {
 
 
 
-void handle_connectoin(User* user, int client_fd) {
-  vector<char> buf(4096);
+void handle_connectoin(User* user) {
+  vector<char> buf(1024);
 	// User user;
   while (true) {
     fill(all(buf), 0);
     // returns number of bytes, takes the data from user as a pointer in the memory and the socket we will listen to
-    size_t bytes_rcv = recv(client_fd, buf.data(), buf.size(), 0);
+    size_t bytes_rcv = recv(user->ID, buf.data(), buf.size(), 0);
 
     // if -1 then it is an error
     if (bytes_rcv < 0) {
@@ -648,7 +626,7 @@ void handle_connectoin(User* user, int client_fd) {
     }
     // if 0 then only this socket will be diconnected
     if (bytes_rcv == 0) {
-      cout << "Client disconnected on socket " << client_fd << endl;
+      cout << "Client disconnected on socket " << user->ID << endl;
       break; // This is the crucial part!
     }
     // else: send the response
@@ -656,18 +634,11 @@ void handle_connectoin(User* user, int client_fd) {
 		vector<string> command = RESP_Parser::parse_array(raw_input);
 		if (command.empty()) continue;
 
-    // Check if current node is a replica (slave role)
-    if (user->getRole() == "slave") {
-        // Run Reply to alter data states, but intercept/discard output strings 
-        // because replicas do not respond to masters during stream processing!
-        Reply(client_fd, command, *user); 
-    } else {
-        if (Reply(client_fd, command, *user) == "") {
-            cerr << "Error\n";
-            continue;
-        }
-    }
+    if (Reply(user->ID, command, *user) == "") {
+			cerr << "Error\n";
+			continue;
+		}
   }
-  close(client_fd);
+  close(user->ID);
 }
 
