@@ -696,6 +696,17 @@ void run_slave(string mh, int mp, int lp) {
 		auto [cmd, consumed] = RESP_Parser::parse_array_with_len(rbuf);
 		if (consumed > 0) {
 			rbuf = rbuf.substr(consumed);
+			// REPLCONF GETACK is the one command replicas must respond to
+			if (cmd.size() >= 2) {
+				string c0 = cmd[0], c1 = cmd[1];
+				for (auto& c : c0) c = toupper(c);
+				for (auto& c : c1) c = toupper(c);
+				if (c0 == "REPLCONF" && c1 == "GETACK") {
+					string ack = "*3\r\n$8\r\nREPLCONF\r\n$3\r\nACK\r\n$1\r\n0\r\n";
+					send(master_fd, ack.c_str(), ack.size(), 0);
+					continue;
+				}
+			}
 			Reply(master_fd, cmd, slave_user);
 		} else {
 			if (!refill()) break;
