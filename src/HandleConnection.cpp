@@ -21,6 +21,24 @@ typedef long long L;
 
 Store store;
 
+void propagate_to_replica(const vector<string>& command, User& user) {
+	Master* m = dynamic_cast<Master*>(&user);
+	if (!m or m->getReplicas().empty()) return;
+
+	// command to RESP array
+	RespNode root;
+	deque<RespNode> cmd_nodes;
+	for (const auto& arg:command)
+		cmd_nodes.push_back(RespNode{arg});
+
+	root.val = cmd_nodes;
+	string resp_cmd = RESP_Parser::make_array(root);
+
+	// send to repolicas tracked by this master
+	for (int replica:m->getReplicas())
+		send(replica, resp_cmd.c_str(), resp_cmd.size(), 0);
+}
+
 string send_(int client, string str) {
 	send(client, str.c_str(), str.size(), 0);
 	return str;
@@ -85,6 +103,7 @@ string Reply(int client, vector<string> input, User& user) {
 				}
 				res = "OK", simple = true;
 				store.SET(input[1], {input[2], Store::get_time()+ttl});
+				propagate_to_replica(input, user);
 			} else cerr << "ERR syntax error\n";
 			break;
 		
@@ -551,6 +570,8 @@ string Reply(int client, vector<string> input, User& user) {
         send(client, rdb_header.c_str(), rdb_header.size(), 0);
         send(client, rdb_content.c_str(), rdb_content.size(), 0);
 
+				m->registerReplica(client);
+
         return ""; // Return empty to prevent duplicate sends from the bottom of Reply()
 			}
 			break;
@@ -612,7 +633,7 @@ string Reply(int client, vector<string> input, User& user) {
 
 
 void handle_connectoin(User* user) {
-  vector<char> buf(1024);
+  vector<char> buf(4096);
 	// User user;
   while (true) {
     fill(all(buf), 0);
@@ -634,10 +655,17 @@ void handle_connectoin(User* user) {
 		vector<string> command = RESP_Parser::parse_array(raw_input);
 		if (command.empty()) continue;
 
-    if (Reply(user->ID, command, *user) == "") {
-			cerr << "Error\n";
-			continue;
-		}
+    // Check if current node is a replica (slave role)
+    if (user->getRole() == "slave") {
+        // Run Reply to alter data states, but intercept/discard output strings 
+        // because replicas do not respond to masters during stream processing!
+        Reply(user->ID, command, *user); 
+    } else {
+        if (Reply(user->ID, command, *user) == "") {
+            cerr << "Error\n";
+            continue;
+        }
+    }
   }
   close(user->ID);
 }
